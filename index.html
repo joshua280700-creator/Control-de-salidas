@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Monitoreo de Salidas</title>
+    <title>Control de Salidas</title>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
@@ -12,97 +12,50 @@
             --secondary: #2b6cb0;
             --accent: #3182ce;
             --bg-color: #f7fafc;
-            --success: #38a169;
-            --error: #e53e3e;
             --text-main: #2d3748;
             --text-light: #718096;
         }
 
-        body { 
-            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; 
-            margin: 0; 
-            background: var(--bg-color); 
-            color: var(--text-main);
-            padding-bottom: 30px;
-        }
+        body { font-family: 'Segoe UI', system-ui, sans-serif; margin: 0; background: var(--bg-color); color: var(--text-main); padding-bottom: 30px; }
 
-        /* Header Profesional */
-        header {
-            background: linear-gradient(135deg, var(--primary), var(--secondary));
-            color: white;
-            padding: 20px;
-            text-align: center;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            margin-bottom: 20px;
-        }
-        
-        header h1 { margin: 0; font-size: 24px; letter-spacing: 0.5px; }
+        header { background: linear-gradient(135deg, var(--primary), var(--secondary)); color: white; padding: 20px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        header h1 { margin: 0; font-size: 24px; }
         header p { margin: 5px 0 0 0; font-size: 14px; opacity: 0.9; }
 
-        .container {
-            max-width: 600px;
-            margin: 0 auto;
-            padding: 0 15px;
-        }
+        .container { max-width: 600px; margin: 0 auto; padding: 0 15px; }
 
-        /* Tarjetas (Cards) */
-        .card { 
-            background: white; 
-            padding: 20px; 
-            border-radius: 12px; 
-            box-shadow: 0 4px 6px rgba(0,0,0,0.05), 0 1px 3px rgba(0,0,0,0.1); 
-            margin-bottom: 20px; 
-        }
-
+        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 20px; }
         h3 { margin-top: 0; color: var(--primary); font-size: 18px; border-bottom: 2px solid #edf2f7; padding-bottom: 10px; }
 
-        /* Pantalla de Carga (Radar) */
-        #loader { 
-            text-align: center; 
-            padding: 30px 20px; 
-        }
-        .spinner {
-            border: 4px solid #edf2f7;
-            border-top: 4px solid var(--accent);
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 15px auto;
-        }
+        #loader { text-align: center; padding: 30px 20px; }
+        .spinner { border: 4px solid #edf2f7; border-top: 4px solid var(--accent); border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto 15px auto; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-        /* Lector de QR/Barras */
+        /* Lector de QR/Barras y sus estados visuales */
         #reader { 
             width: 100%; 
             border-radius: 12px; 
             overflow: hidden; 
-            border: none !important;
-            box-shadow: inset 0 0 0 2px #edf2f7;
+            border: 4px solid transparent; /* Borde invisible por defecto */
+            transition: all 0.2s ease;
         }
         
-        #scannedInfo {
-            margin-top: 15px; 
-            padding: 15px;
-            border-radius: 8px;
-            font-weight: 600; 
-            text-align: center;
-            font-size: 16px;
-            background: #edf2f7;
-            color: var(--text-main);
-            transition: all 0.3s ease;
-        }
+        /* Efectos visuales al escanear */
+        .reader-warning { border-color: #dd6b20 !important; box-shadow: 0 0 15px rgba(221, 107, 32, 0.5); }
+        .reader-error { border-color: #e53e3e !important; box-shadow: 0 0 15px rgba(229, 62, 62, 0.5); }
+        .reader-success { border-color: #38a169 !important; box-shadow: 0 0 15px rgba(56, 161, 105, 0.4); }
+
+        #scannedInfo { margin-top: 15px; padding: 15px; border-radius: 8px; font-weight: 600; text-align: center; font-size: 16px; background: #edf2f7; transition: all 0.3s ease; }
+        
         .info-success { background: #c6f6d5 !important; color: #22543d !important; border: 1px solid #9ae6b4; }
         .info-error { background: #fed7d7 !important; color: #822727 !important; border: 1px solid #feb2b2; }
+        .info-warning { background: #feebc8 !important; color: #9c4221 !important; border: 1px solid #fbd38d; }
 
-        /* Tabla de Historial */
         .table-container { overflow-x: auto; }
         table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 10px; }
         th, td { border-bottom: 1px solid #edf2f7; padding: 12px 8px; text-align: center; }
-        th { background: #f7fafc; color: var(--text-light); font-weight: 600; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px; }
-        tr:hover { background-color: #f7fafc; }
+        th { background: #f7fafc; color: var(--text-light); }
         
-        /* Badges de Estado */
         .badge { padding: 4px 8px; border-radius: 12px; font-size: 11px; font-weight: bold; }
         .badge-sync { background: #feebc8; color: #c05621; }
         .badge-ok { background: #c6f6d5; color: #22543d; }
@@ -117,37 +70,22 @@
 </header>
 
 <div class="container">
-    <!-- Panel de Carga del Catálogo -->
     <div class="card" id="loader">
         <div class="spinner"></div>
-        <div id="loader-text" style="color: var(--text-main); font-weight: 500;">
-            Sincronizando catálogo del día...<br>
-            <span style="font-size: 13px; color: var(--text-light); margin-top: 5px; display: inline-block;">Buscando base de datos en el servidor</span>
-        </div>
+        <div id="loader-text">Sincronizando catálogo...</div>
     </div>
 
-    <!-- Panel del Escáner (Oculto hasta que cargue el catálogo) -->
     <div class="card" id="scanner-container" style="display:none;">
         <h3>Escanear Guía</h3>
         <div id="reader"></div>
-        <div id="scannedInfo">
-            📷 Cámara lista. Apunta al código.
-        </div>
+        <div id="scannedInfo">📷 Cámara lista. Apunta al código.</div>
     </div>
 
-    <!-- Panel del Historial -->
     <div class="card" id="history-container" style="display:none;">
         <h3>Historial de Escaneo</h3>
         <div class="table-container">
             <table id="logTable">
-                <thead>
-                    <tr>
-                        <th>Guía</th>
-                        <th>Muelle</th>
-                        <th>Ruta</th>
-                        <th>Status</th>
-                    </tr>
-                </thead>
+                <thead><tr><th>Guía</th><th>Muelle</th><th>Ruta</th><th>Status</th></tr></thead>
                 <tbody></tbody>
             </table>
         </div>
@@ -156,132 +94,173 @@
 
 <script>
     let CATALOGO = {};
+    let ESCANEADOS = new Set(); // Memoria de guías ya escaneadas
+    let scanPausado = false; // Evita el escaneo múltiple rápido
+    
     const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbw8drrVJiEM5PyMQ7_Ok3F2o1i1DjT44WgpP5yKvPQddkQRVI7yx3o2WAxX5AM3TWul/exec";
 
-    // 1. Descargar y procesar los archivos desde GitHub
+    // --- SISTEMA DE AUDIO NATIVO ---
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    const audioCtx = new AudioContext();
+
+    function generarSonido(frecuencia, duracion, tipo = 'sine') {
+        if(audioCtx.state === 'suspended') audioCtx.resume();
+        const oscillator = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+        
+        oscillator.type = tipo;
+        oscillator.frequency.setValueAtTime(frecuencia, audioCtx.currentTime);
+        
+        gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + duracion);
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+        
+        oscillator.start();
+        oscillator.stop(audioCtx.currentTime + duracion);
+    }
+
+    function sonidoExito() { 
+        generarSonido(800, 0.1); 
+        setTimeout(() => generarSonido(1200, 0.15), 100); 
+    }
+    
+    function sonidoError() { 
+        generarSonido(300, 0.4, 'square'); 
+    }
+
+    // --- CARGA DE CATÁLOGO ---
     async function cargarCatalogo() {
         try {
-            // El Radar: Diferentes nombres que puede tomar el archivo
-            const posiblesNombresViajes = [
-                'Viajes.xlsx',
-                'Viajes (1).xlsx',
-                'Viajes (2).xlsx',
-                'Viajes (3).xlsx',
-                'Viajes (4).xlsx',
-                'Viajes (5).xlsx',
-                'Viajes (6).xlsx'
-            ];
-
+            const posiblesNombresViajes = ['Viajes.xlsx', 'Viajes (1).xlsx', 'Viajes (2).xlsx', 'Viajes (3).xlsx'];
             let resViajes = null;
             
             for (let nombre of posiblesNombresViajes) {
                 let intento = await fetch(nombre);
-                if (intento.ok) {
-                    resViajes = intento;
-                    break;
-                }
+                if (intento.ok) { resViajes = intento; break; }
             }
 
             const resMuelle = await fetch('Muelle.xlsx');
-
-            if(!resViajes || !resMuelle.ok) throw new Error("No se encontraron los archivos Excel en el sistema.");
+            if(!resViajes || !resMuelle.ok) throw new Error("Archivos Excel no encontrados.");
 
             const dataV = await resViajes.arrayBuffer();
             const dataM = await resMuelle.arrayBuffer();
-
             const wbV = XLSX.read(dataV, {type: 'array'});
             const wbM = XLSX.read(dataM, {type: 'array'});
 
             const paradas = XLSX.utils.sheet_to_json(wbV.Sheets["Paradas"]);
             const muelles = XLSX.utils.sheet_to_json(wbM.Sheets[wbM.SheetNames[0]]);
 
-            // Lógica de cruce de datos y oleadas
             paradas.forEach(p => {
                 const idViaje = p["IdViaje"];
                 const guia = p["Pedido Referencia externa"];
-                
                 const infoMuelle = muelles.find(m => m["ID"].toString().startsWith(idViaje.toString()));
 
                 if(infoMuelle) {
                     let muelleFinal = infoMuelle["Muelle de salida"];
                     const idCompleto = infoMuelle["ID"].toString();
-                    
-                    // Si trae guion, procesamos la oleada
                     if(idCompleto.includes("-")) {
                         const oleada = idCompleto.split("-")[1].trim();
-                        if(oleada !== "1") {
-                            muelleFinal += oleada; // Ej: AC + 2 = AC2
-                        }
+                        if(oleada !== "1") muelleFinal += oleada;
                     }
-
-                    CATALOGO[guia] = {
-                        muelle: muelleFinal,
-                        ruta: idCompleto,
-                        orden: p["Orden"] || 0
-                    };
+                    CATALOGO[guia] = { muelle: muelleFinal, ruta: idCompleto, orden: p["Orden"] || 0 };
                 }
             });
 
-            // Ocultar loader y mostrar interfaz
             document.getElementById('loader').style.display = 'none';
             document.getElementById('scanner-container').style.display = 'block';
             document.getElementById('history-container').style.display = 'block';
             
-            // Iniciar escáner
-            let scanner = new Html5QrcodeScanner("reader", { fps: 15, qrbox: 250 });
+            let scanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: 250 });
             scanner.render(onScanSuccess);
 
         } catch (error) {
-            document.getElementById('loader-text').innerHTML = "❌ Error:<br>" + error.message + "<br><span style='font-size:12px;'>Verifica que los archivos estén en GitHub.</span>";
+            document.getElementById('loader-text').innerHTML = "❌ Error:<br>" + error.message;
             document.querySelector('.spinner').style.display = 'none';
         }
     }
 
-    // 2. Lógica al escanear exitosamente
+    // --- LÓGICA DE ESCANEO MEJORADA ---
     function onScanSuccess(decodedText) {
-        const item = CATALOGO[decodedText];
+        if (scanPausado) return; // Si está en pausa, ignora el escaneo
+
         const infoDiv = document.getElementById('scannedInfo');
+        const readerDiv = document.getElementById('reader');
+
+        // 1. Validar si ya fue escaneado (Antiduplicados)
+        if (ESCANEADOS.has(decodedText)) {
+            sonidoError();
+            infoDiv.innerHTML = `⚠️ YA ESCANEADA<br><span style="font-size: 14px;">La guía ${decodedText} ya fue registrada.</span>`;
+            infoDiv.className = "info-warning";
+            
+            // Efecto visual: Borde naranja
+            readerDiv.className = "reader-warning";
+            
+            pausarEscaneo(1500); // Pausa de 1.5 segundos para quitar el paquete
+            return;
+        }
+
+        // 2. Validar si existe en el catálogo
+        const item = CATALOGO[decodedText];
         
         if(item) {
-            infoDiv.innerHTML = `✅ GUÍA ENCONTRADA<br><span style="font-size: 22px; color: #1a365d;">Muelle: ${item.muelle}</span>`;
+            sonidoExito();
+            ESCANEADOS.add(decodedText); // Lo guardamos en la memoria
+            
+            infoDiv.innerHTML = `✅ ÉXITO<br><span style="font-size: 22px; color: #1a365d;">Muelle: ${item.muelle}</span>`;
             infoDiv.className = "info-success";
+            
+            // Efecto visual: Borde verde rápido
+            readerDiv.className = "reader-success";
+            setTimeout(() => readerDiv.className = "", 500);
+            
             enviarASheets(decodedText, item);
+            
+            // Breve pausa para no leer el mismo código exitoso dos veces seguidas
+            pausarEscaneo(800); 
         } else {
-            infoDiv.innerHTML = `❌ GUÍA NO AUTORIZADA<br><span style="font-size: 14px;">La guía ${decodedText} no está en el catálogo actual.</span>`;
+            sonidoError();
+            infoDiv.innerHTML = `❌ NO AUTORIZADA<br><span style="font-size: 14px;">Guía ${decodedText} fuera del catálogo.</span>`;
             infoDiv.className = "info-error";
+            
+            // Efecto visual: Borde rojo
+            readerDiv.className = "reader-error";
+            
+            pausarEscaneo(1500);
         }
     }
 
-    // 3. Envío a Google Sheets (Segundo plano)
+    // Función auxiliar para pausar y reiniciar el escáner visualmente
+    function pausarEscaneo(tiempoEspera) {
+        scanPausado = true;
+        setTimeout(() => {
+            scanPausado = false;
+            document.getElementById('reader').className = ""; // Quita el borde de color
+            document.getElementById('scannedInfo').className = "";
+            document.getElementById('scannedInfo').innerHTML = "📷 Cámara lista. Apunta al siguiente.";
+        }, tiempoEspera);
+    }
+
+    // --- ENVÍO A GOOGLE SHEETS ---
     async function enviarASheets(guia, item) {
         const table = document.getElementById('logTable').querySelector('tbody');
         const row = table.insertRow(0);
+        let rutaCorta = item.ruta.split(" - ")[0]; 
         
-        // Formato visual en la tabla
-        let rutaCorta = item.ruta.split(" - ")[0]; // Muestra solo el inicio de la ruta para que no ocupe tanto espacio
-        
-        row.innerHTML = `
-            <td><strong>${guia}</strong></td>
-            <td><span style="font-weight: bold; color: var(--primary);">${item.muelle}</span></td>
-            <td>${rutaCorta}</td>
-            <td><span class="badge badge-sync">Enviando</span></td>
-        `;
+        row.innerHTML = `<td><strong>${guia}</strong></td><td><span style="font-weight: bold;">${item.muelle}</span></td><td>${rutaCorta}</td><td><span class="badge badge-sync">...</span></td>`;
 
         try {
             await fetch(WEB_APP_URL, {
-                method: "POST",
-                mode: "no-cors",
+                method: "POST", mode: "no-cors",
                 body: JSON.stringify({guia: guia, muelle: item.muelle, ruta: item.ruta, orden: item.orden})
             });
-            // Cambiar status a OK
-            row.cells[3].innerHTML = '<span class="badge badge-ok">Guardado</span>';
+            row.cells[3].innerHTML = '<span class="badge badge-ok">OK</span>';
         } catch(e) {
-            // Cambiar status a Error
             row.cells[3].innerHTML = '<span class="badge badge-fail">Error</span>';
         }
     }
 
-    // Iniciar el proceso de carga en cuanto se abre la página
     window.onload = cargarCatalogo;
 </script>
 </body>
