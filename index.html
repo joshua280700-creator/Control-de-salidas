@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Control de Salidas</title>
+    <!-- Usamos la misma librería, pero llamaremos a la función directa sin menús -->
     <script src="https://unpkg.com/html5-qrcode"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
@@ -31,16 +32,16 @@
         .spinner { border: 4px solid #edf2f7; border-top: 4px solid var(--accent); border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto 15px auto; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-        /* Lector de QR/Barras y sus estados visuales */
+        /* Lector de QR/Barras mucho más limpio sin los botones de la librería */
         #reader { 
             width: 100%; 
             border-radius: 12px; 
             overflow: hidden; 
-            border: 4px solid transparent; /* Borde invisible por defecto */
+            border: 4px solid transparent; 
             transition: all 0.2s ease;
+            background-color: #000; /* Fondo negro mientras carga la cámara */
         }
         
-        /* Efectos visuales al escanear */
         .reader-warning { border-color: #dd6b20 !important; box-shadow: 0 0 15px rgba(221, 107, 32, 0.5); }
         .reader-error { border-color: #e53e3e !important; box-shadow: 0 0 15px rgba(229, 62, 62, 0.5); }
         .reader-success { border-color: #38a169 !important; box-shadow: 0 0 15px rgba(56, 161, 105, 0.4); }
@@ -78,7 +79,7 @@
     <div class="card" id="scanner-container" style="display:none;">
         <h3>Escanear Guía</h3>
         <div id="reader"></div>
-        <div id="scannedInfo">📷 Cámara lista. Apunta al código.</div>
+        <div id="scannedInfo">📷 Iniciando cámara trasera...</div>
     </div>
 
     <div class="card" id="history-container" style="display:none;">
@@ -94,8 +95,8 @@
 
 <script>
     let CATALOGO = {};
-    let ESCANEADOS = new Set(); // Memoria de guías ya escaneadas
-    let scanPausado = false; // Evita el escaneo múltiple rápido
+    let ESCANEADOS = new Set(); 
+    let scanPausado = false; 
     
     const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbw8drrVJiEM5PyMQ7_Ok3F2o1i1DjT44WgpP5yKvPQddkQRVI7yx3o2WAxX5AM3TWul/exec";
 
@@ -121,19 +122,13 @@
         oscillator.stop(audioCtx.currentTime + duracion);
     }
 
-    function sonidoExito() { 
-        generarSonido(800, 0.1); 
-        setTimeout(() => generarSonido(1200, 0.15), 100); 
-    }
-    
-    function sonidoError() { 
-        generarSonido(300, 0.4, 'square'); 
-    }
+    function sonidoExito() { generarSonido(800, 0.1); setTimeout(() => generarSonido(1200, 0.15), 100); }
+    function sonidoError() { generarSonido(300, 0.4, 'square'); }
 
     // --- CARGA DE CATÁLOGO ---
     async function cargarCatalogo() {
         try {
-            const posiblesNombresViajes = ['Viajes.xlsx', 'Viajes (1).xlsx', 'Viajes (2).xlsx', 'Viajes (3).xlsx'];
+            const posiblesNombresViajes = ['Viajes.xlsx', 'Viajes (1).xlsx', 'Viajes (2).xlsx', 'Viajes (3).xlsx', 'Viajes (4).xlsx'];
             let resViajes = null;
             
             for (let nombre of posiblesNombresViajes) {
@@ -172,8 +167,7 @@
             document.getElementById('scanner-container').style.display = 'block';
             document.getElementById('history-container').style.display = 'block';
             
-            let scanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: 250 });
-            scanner.render(onScanSuccess);
+            iniciarCamaraTrasera(); // Llamamos a la nueva función sin menús
 
         } catch (error) {
             document.getElementById('loader-text').innerHTML = "❌ Error:<br>" + error.message;
@@ -181,62 +175,71 @@
         }
     }
 
-    // --- LÓGICA DE ESCANEO MEJORADA ---
+    // --- NUEVA LÓGICA DE INICIO DIRECTO DE CÁMARA TRASERA ---
+    function iniciarCamaraTrasera() {
+        const html5QrCode = new Html5Qrcode("reader");
+        
+        html5QrCode.start(
+            { facingMode: "environment" }, // AQUÍ ESTÁ LA MAGIA: Obliga a usar la cámara de atrás
+            {
+                fps: 15,
+                qrbox: { width: 250, height: 250 }
+            },
+            onScanSuccess
+        ).then(() => {
+            document.getElementById('scannedInfo').innerHTML = "📷 Cámara lista. Apunta al código.";
+        }).catch((err) => {
+            console.error("Error al iniciar cámara:", err);
+            document.getElementById('scannedInfo').innerHTML = "❌ Error al acceder a la cámara. Revisa los permisos.";
+            document.getElementById('scannedInfo').className = "info-error";
+        });
+    }
+
+    // --- LÓGICA DE ESCANEO ---
     function onScanSuccess(decodedText) {
-        if (scanPausado) return; // Si está en pausa, ignora el escaneo
+        if (scanPausado) return; 
 
         const infoDiv = document.getElementById('scannedInfo');
         const readerDiv = document.getElementById('reader');
 
-        // 1. Validar si ya fue escaneado (Antiduplicados)
         if (ESCANEADOS.has(decodedText)) {
             sonidoError();
             infoDiv.innerHTML = `⚠️ YA ESCANEADA<br><span style="font-size: 14px;">La guía ${decodedText} ya fue registrada.</span>`;
             infoDiv.className = "info-warning";
-            
-            // Efecto visual: Borde naranja
             readerDiv.className = "reader-warning";
-            
-            pausarEscaneo(1500); // Pausa de 1.5 segundos para quitar el paquete
+            pausarEscaneo(1500); 
             return;
         }
 
-        // 2. Validar si existe en el catálogo
         const item = CATALOGO[decodedText];
         
         if(item) {
             sonidoExito();
-            ESCANEADOS.add(decodedText); // Lo guardamos en la memoria
+            ESCANEADOS.add(decodedText); 
             
             infoDiv.innerHTML = `✅ ÉXITO<br><span style="font-size: 22px; color: #1a365d;">Muelle: ${item.muelle}</span>`;
             infoDiv.className = "info-success";
             
-            // Efecto visual: Borde verde rápido
             readerDiv.className = "reader-success";
             setTimeout(() => readerDiv.className = "", 500);
             
             enviarASheets(decodedText, item);
-            
-            // Breve pausa para no leer el mismo código exitoso dos veces seguidas
             pausarEscaneo(800); 
         } else {
             sonidoError();
             infoDiv.innerHTML = `❌ NO AUTORIZADA<br><span style="font-size: 14px;">Guía ${decodedText} fuera del catálogo.</span>`;
             infoDiv.className = "info-error";
             
-            // Efecto visual: Borde rojo
             readerDiv.className = "reader-error";
-            
             pausarEscaneo(1500);
         }
     }
 
-    // Función auxiliar para pausar y reiniciar el escáner visualmente
     function pausarEscaneo(tiempoEspera) {
         scanPausado = true;
         setTimeout(() => {
             scanPausado = false;
-            document.getElementById('reader').className = ""; // Quita el borde de color
+            document.getElementById('reader').className = ""; 
             document.getElementById('scannedInfo').className = "";
             document.getElementById('scannedInfo').innerHTML = "📷 Cámara lista. Apunta al siguiente.";
         }, tiempoEspera);
