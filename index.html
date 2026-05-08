@@ -17,13 +17,10 @@
         }
 
         body { font-family: 'Segoe UI', system-ui, sans-serif; margin: 0; background: var(--bg-color); color: var(--text-main); padding-bottom: 30px; }
-
         header { background: linear-gradient(135deg, var(--primary), var(--secondary)); color: white; padding: 20px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 20px; }
         header h1 { margin: 0; font-size: 24px; }
         header p { margin: 5px 0 0 0; font-size: 14px; opacity: 0.9; }
-
         .container { max-width: 600px; margin: 0 auto; padding: 0 15px; }
-
         .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 20px; }
         h3 { margin-top: 0; color: var(--primary); font-size: 18px; border-bottom: 2px solid #edf2f7; padding-bottom: 10px; }
 
@@ -31,37 +28,19 @@
         .spinner { border: 4px solid #edf2f7; border-top: 4px solid var(--accent); border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto 15px auto; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-        /* Estilos del Dashboard de Contadores */
-        .dashboard {
-            display: flex;
-            justify-content: space-between;
-            background: #edf2f7;
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 15px;
-            text-align: center;
-        }
+        .dashboard { display: flex; justify-content: space-between; background: #edf2f7; padding: 15px; border-radius: 8px; margin-bottom: 15px; text-align: center; }
         .stat-box { flex: 1; border-right: 1px solid #cbd5e0; }
         .stat-box:last-child { border-right: none; }
         .stat-title { font-size: 12px; color: var(--text-light); text-transform: uppercase; font-weight: bold; }
         .stat-number { font-size: 24px; font-weight: bold; color: var(--primary); margin-top: 5px; }
-        .stat-faltante { color: #e53e3e; } /* Rojo para resaltar los faltantes */
+        .stat-faltante { color: #e53e3e; }
 
-        #reader { 
-            width: 100%; 
-            border-radius: 12px; 
-            overflow: hidden; 
-            border: 4px solid transparent; 
-            transition: all 0.2s ease;
-            background-color: #000; 
-        }
-        
-        .reader-warning { border-color: #dd6b20 !important; box-shadow: 0 0 15px rgba(221, 107, 32, 0.5); }
-        .reader-error { border-color: #e53e3e !important; box-shadow: 0 0 15px rgba(229, 62, 62, 0.5); }
-        .reader-success { border-color: #38a169 !important; box-shadow: 0 0 15px rgba(56, 161, 105, 0.4); }
+        #reader { width: 100%; border-radius: 12px; overflow: hidden; border: 4px solid transparent; transition: all 0.2s ease; background-color: #000; }
+        .reader-warning { border-color: #dd6b20 !important; }
+        .reader-error { border-color: #e53e3e !important; }
+        .reader-success { border-color: #38a169 !important; }
 
         #scannedInfo { margin-top: 15px; padding: 15px; border-radius: 8px; font-weight: 600; text-align: center; font-size: 16px; background: #edf2f7; transition: all 0.3s ease; }
-        
         .info-success { background: #c6f6d5 !important; color: #22543d !important; border: 1px solid #9ae6b4; }
         .info-error { background: #fed7d7 !important; color: #822727 !important; border: 1px solid #feb2b2; }
         .info-warning { background: #feebc8 !important; color: #9c4221 !important; border: 1px solid #fbd38d; }
@@ -70,7 +49,6 @@
         table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 10px; }
         th, td { border-bottom: 1px solid #edf2f7; padding: 12px 8px; text-align: center; }
         th { background: #f7fafc; color: var(--text-light); }
-        
         .badge { padding: 4px 8px; border-radius: 12px; font-size: 11px; font-weight: bold; }
         .badge-sync { background: #feebc8; color: #c05621; }
         .badge-ok { background: #c6f6d5; color: #22543d; }
@@ -87,15 +65,14 @@
 <div class="container">
     <div class="card" id="loader">
         <div class="spinner"></div>
-        <div id="loader-text">Sincronizando catálogo...</div>
+        <div id="loader-text">Sincronizando catálogo de guías únicas...</div>
     </div>
 
     <div class="card" id="scanner-container" style="display:none;">
-        <h3>Progreso de Carga</h3>
-        
+        <h3>Progreso de Carga (Guías Únicas)</h3>
         <div class="dashboard">
             <div class="stat-box">
-                <div class="stat-title">Total</div>
+                <div class="stat-title">Total Únicos</div>
                 <div class="stat-number" id="countTotal">0</div>
             </div>
             <div class="stat-box">
@@ -107,7 +84,6 @@
                 <div class="stat-number stat-faltante" id="countRemaining">0</div>
             </div>
         </div>
-
         <div id="reader"></div>
         <div id="scannedInfo">📷 Iniciando cámara trasera...</div>
     </div>
@@ -127,11 +103,10 @@
     let CATALOGO = {};
     let ESCANEADOS = new Set(); 
     let scanPausado = false; 
-    let totalPaquetes = 0; // Variable para guardar el total del día
+    let totalPaquetesUnicos = 0;
     
     const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbw8drrVJiEM5PyMQ7_Ok3F2o1i1DjT44WgpP5yKvPQddkQRVI7yx3o2WAxX5AM3TWul/exec";
 
-    // --- SISTEMA DE AUDIO NATIVO ---
     const AudioContext = window.AudioContext || window.webkitAudioContext;
     const audioCtx = new AudioContext();
 
@@ -139,16 +114,12 @@
         if(audioCtx.state === 'suspended') audioCtx.resume();
         const oscillator = audioCtx.createOscillator();
         const gainNode = audioCtx.createGain();
-        
         oscillator.type = tipo;
         oscillator.frequency.setValueAtTime(frecuencia, audioCtx.currentTime);
-        
         gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
         gainNode.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + duracion);
-        
         oscillator.connect(gainNode);
         gainNode.connect(audioCtx.destination);
-        
         oscillator.start();
         oscillator.stop(audioCtx.currentTime + duracion);
     }
@@ -156,31 +127,24 @@
     function sonidoExito() { generarSonido(800, 0.1); setTimeout(() => generarSonido(1200, 0.15), 100); }
     function sonidoError() { generarSonido(300, 0.4, 'square'); }
 
-    // --- ACTUALIZAR CONTADORES ---
     function actualizarContadores() {
         const escaneados = ESCANEADOS.size;
-        const faltantes = totalPaquetes - escaneados;
-        
-        document.getElementById('countTotal').innerText = totalPaquetes;
+        const faltantes = totalPaquetesUnicos - escaneados;
+        document.getElementById('countTotal').innerText = totalPaquetesUnicos;
         document.getElementById('countScanned').innerText = escaneados;
-        
-        // Evitar que el contador sea negativo por algún error
         document.getElementById('countRemaining').innerText = faltantes >= 0 ? faltantes : 0;
     }
 
-    // --- CARGA DE CATÁLOGO ---
     async function cargarCatalogo() {
         try {
             const posiblesNombresViajes = ['Viajes.xlsx', 'Viajes (1).xlsx', 'Viajes (2).xlsx', 'Viajes (3).xlsx', 'Viajes (4).xlsx'];
             let resViajes = null;
-            
             for (let nombre of posiblesNombresViajes) {
                 let intento = await fetch(nombre);
                 if (intento.ok) { resViajes = intento; break; }
             }
-
             const resMuelle = await fetch('Muelle.xlsx');
-            if(!resViajes || !resMuelle.ok) throw new Error("Archivos Excel no encontrados.");
+            if(!resViajes || !resMuelle.ok) throw new Error("Excel de Viajes o Muelle no encontrado en GitHub.");
 
             const dataV = await resViajes.arrayBuffer();
             const dataM = await resMuelle.arrayBuffer();
@@ -190,30 +154,32 @@
             const paradas = XLSX.utils.sheet_to_json(wbV.Sheets["Paradas"]);
             const muelles = XLSX.utils.sheet_to_json(wbM.Sheets[wbM.SheetNames[0]]);
 
+            // Usamos un objeto para filtrar duplicados por "Pedido Referencia externa"
             paradas.forEach(p => {
-                const idViaje = p["IdViaje"];
                 const guia = p["Pedido Referencia externa"];
-                const infoMuelle = muelles.find(m => m["ID"].toString().startsWith(idViaje.toString()));
-
-                if(infoMuelle) {
-                    let muelleFinal = infoMuelle["Muelle de salida"];
-                    const idCompleto = infoMuelle["ID"].toString();
-                    if(idCompleto.includes("-")) {
-                        const oleada = idCompleto.split("-")[1].trim();
-                        if(oleada !== "1") muelleFinal += oleada;
+                const idViaje = p["IdViaje"];
+                
+                // Si la guía ya está en el catálogo, no la sobreescribimos (evita el conteo de 6000+)
+                if (guia && !CATALOGO[guia]) {
+                    const infoMuelle = muelles.find(m => m["ID"].toString().startsWith(idViaje.toString()));
+                    if(infoMuelle) {
+                        let muelleFinal = infoMuelle["Muelle de salida"];
+                        const idCompleto = infoMuelle["ID"].toString();
+                        if(idCompleto.includes("-")) {
+                            const oleada = idCompleto.split("-")[1].trim();
+                            if(oleada !== "1") muelleFinal += oleada;
+                        }
+                        CATALOGO[guia] = { muelle: muelleFinal, ruta: idCompleto, orden: p["Orden"] || 0 };
                     }
-                    CATALOGO[guia] = { muelle: muelleFinal, ruta: idCompleto, orden: p["Orden"] || 0 };
                 }
             });
 
-            // Calculamos el total de guías únicas cargadas en el catálogo
-            totalPaquetes = Object.keys(CATALOGO).length;
-            actualizarContadores(); // Mostramos los números iniciales
+            totalPaquetesUnicos = Object.keys(CATALOGO).length;
+            actualizarContadores();
 
             document.getElementById('loader').style.display = 'none';
             document.getElementById('scanner-container').style.display = 'block';
             document.getElementById('history-container').style.display = 'block';
-            
             iniciarCamaraTrasera(); 
 
         } catch (error) {
@@ -222,26 +188,19 @@
         }
     }
 
-    // --- INICIO DE CÁMARA TRASERA ---
     function iniciarCamaraTrasera() {
         const html5QrCode = new Html5Qrcode("reader");
         html5QrCode.start(
             { facingMode: "environment" }, 
             { fps: 15, qrbox: { width: 250, height: 250 } },
             onScanSuccess
-        ).then(() => {
-            document.getElementById('scannedInfo').innerHTML = "📷 Cámara lista. Apunta al código.";
-        }).catch((err) => {
-            console.error("Error al iniciar cámara:", err);
-            document.getElementById('scannedInfo').innerHTML = "❌ Error al acceder a la cámara. Revisa los permisos.";
-            document.getElementById('scannedInfo').className = "info-error";
+        ).catch(() => {
+            document.getElementById('scannedInfo').innerHTML = "❌ Revisa permisos de cámara.";
         });
     }
 
-    // --- LÓGICA DE ESCANEO ---
     function onScanSuccess(decodedText) {
         if (scanPausado) return; 
-
         const infoDiv = document.getElementById('scannedInfo');
         const readerDiv = document.getElementById('reader');
 
@@ -255,27 +214,20 @@
         }
 
         const item = CATALOGO[decodedText];
-        
         if(item) {
             sonidoExito();
             ESCANEADOS.add(decodedText); 
-            
-            // Actualizamos los contadores en la pantalla
             actualizarContadores();
-            
             infoDiv.innerHTML = `✅ ÉXITO<br><span style="font-size: 22px; color: #1a365d;">Muelle: ${item.muelle}</span>`;
             infoDiv.className = "info-success";
-            
             readerDiv.className = "reader-success";
             setTimeout(() => readerDiv.className = "", 500);
-            
             enviarASheets(decodedText, item);
             pausarEscaneo(800); 
         } else {
             sonidoError();
             infoDiv.innerHTML = `❌ NO AUTORIZADA<br><span style="font-size: 14px;">Guía ${decodedText} fuera del catálogo.</span>`;
             infoDiv.className = "info-error";
-            
             readerDiv.className = "reader-error";
             pausarEscaneo(1500);
         }
@@ -287,18 +239,15 @@
             scanPausado = false;
             document.getElementById('reader').className = ""; 
             document.getElementById('scannedInfo').className = "";
-            document.getElementById('scannedInfo').innerHTML = "📷 Cámara lista. Apunta al siguiente.";
+            document.getElementById('scannedInfo').innerHTML = "📷 Cámara lista.";
         }, tiempoEspera);
     }
 
-    // --- ENVÍO A GOOGLE SHEETS ---
     async function enviarASheets(guia, item) {
         const table = document.getElementById('logTable').querySelector('tbody');
         const row = table.insertRow(0);
         let rutaCorta = item.ruta.split(" - ")[0]; 
-        
         row.innerHTML = `<td><strong>${guia}</strong></td><td><span style="font-weight: bold;">${item.muelle}</span></td><td>${rutaCorta}</td><td><span class="badge badge-sync">...</span></td>`;
-
         try {
             await fetch(WEB_APP_URL, {
                 method: "POST", mode: "no-cors",
