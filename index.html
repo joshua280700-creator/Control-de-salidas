@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Control de Salidas</title>
-    <!-- Usamos la misma librería, pero llamaremos a la función directa sin menús -->
     <script src="https://unpkg.com/html5-qrcode"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
@@ -32,14 +31,29 @@
         .spinner { border: 4px solid #edf2f7; border-top: 4px solid var(--accent); border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto 15px auto; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-        /* Lector de QR/Barras mucho más limpio sin los botones de la librería */
+        /* Estilos del Dashboard de Contadores */
+        .dashboard {
+            display: flex;
+            justify-content: space-between;
+            background: #edf2f7;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        .stat-box { flex: 1; border-right: 1px solid #cbd5e0; }
+        .stat-box:last-child { border-right: none; }
+        .stat-title { font-size: 12px; color: var(--text-light); text-transform: uppercase; font-weight: bold; }
+        .stat-number { font-size: 24px; font-weight: bold; color: var(--primary); margin-top: 5px; }
+        .stat-faltante { color: #e53e3e; } /* Rojo para resaltar los faltantes */
+
         #reader { 
             width: 100%; 
             border-radius: 12px; 
             overflow: hidden; 
             border: 4px solid transparent; 
             transition: all 0.2s ease;
-            background-color: #000; /* Fondo negro mientras carga la cámara */
+            background-color: #000; 
         }
         
         .reader-warning { border-color: #dd6b20 !important; box-shadow: 0 0 15px rgba(221, 107, 32, 0.5); }
@@ -77,7 +91,23 @@
     </div>
 
     <div class="card" id="scanner-container" style="display:none;">
-        <h3>Escanear Guía</h3>
+        <h3>Progreso de Carga</h3>
+        
+        <div class="dashboard">
+            <div class="stat-box">
+                <div class="stat-title">Total</div>
+                <div class="stat-number" id="countTotal">0</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-title">Escaneados</div>
+                <div class="stat-number" id="countScanned">0</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-title">Faltantes</div>
+                <div class="stat-number stat-faltante" id="countRemaining">0</div>
+            </div>
+        </div>
+
         <div id="reader"></div>
         <div id="scannedInfo">📷 Iniciando cámara trasera...</div>
     </div>
@@ -97,6 +127,7 @@
     let CATALOGO = {};
     let ESCANEADOS = new Set(); 
     let scanPausado = false; 
+    let totalPaquetes = 0; // Variable para guardar el total del día
     
     const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbw8drrVJiEM5PyMQ7_Ok3F2o1i1DjT44WgpP5yKvPQddkQRVI7yx3o2WAxX5AM3TWul/exec";
 
@@ -124,6 +155,18 @@
 
     function sonidoExito() { generarSonido(800, 0.1); setTimeout(() => generarSonido(1200, 0.15), 100); }
     function sonidoError() { generarSonido(300, 0.4, 'square'); }
+
+    // --- ACTUALIZAR CONTADORES ---
+    function actualizarContadores() {
+        const escaneados = ESCANEADOS.size;
+        const faltantes = totalPaquetes - escaneados;
+        
+        document.getElementById('countTotal').innerText = totalPaquetes;
+        document.getElementById('countScanned').innerText = escaneados;
+        
+        // Evitar que el contador sea negativo por algún error
+        document.getElementById('countRemaining').innerText = faltantes >= 0 ? faltantes : 0;
+    }
 
     // --- CARGA DE CATÁLOGO ---
     async function cargarCatalogo() {
@@ -163,11 +206,15 @@
                 }
             });
 
+            // Calculamos el total de guías únicas cargadas en el catálogo
+            totalPaquetes = Object.keys(CATALOGO).length;
+            actualizarContadores(); // Mostramos los números iniciales
+
             document.getElementById('loader').style.display = 'none';
             document.getElementById('scanner-container').style.display = 'block';
             document.getElementById('history-container').style.display = 'block';
             
-            iniciarCamaraTrasera(); // Llamamos a la nueva función sin menús
+            iniciarCamaraTrasera(); 
 
         } catch (error) {
             document.getElementById('loader-text').innerHTML = "❌ Error:<br>" + error.message;
@@ -175,16 +222,12 @@
         }
     }
 
-    // --- NUEVA LÓGICA DE INICIO DIRECTO DE CÁMARA TRASERA ---
+    // --- INICIO DE CÁMARA TRASERA ---
     function iniciarCamaraTrasera() {
         const html5QrCode = new Html5Qrcode("reader");
-        
         html5QrCode.start(
-            { facingMode: "environment" }, // AQUÍ ESTÁ LA MAGIA: Obliga a usar la cámara de atrás
-            {
-                fps: 15,
-                qrbox: { width: 250, height: 250 }
-            },
+            { facingMode: "environment" }, 
+            { fps: 15, qrbox: { width: 250, height: 250 } },
             onScanSuccess
         ).then(() => {
             document.getElementById('scannedInfo').innerHTML = "📷 Cámara lista. Apunta al código.";
@@ -216,6 +259,9 @@
         if(item) {
             sonidoExito();
             ESCANEADOS.add(decodedText); 
+            
+            // Actualizamos los contadores en la pantalla
+            actualizarContadores();
             
             infoDiv.innerHTML = `✅ ÉXITO<br><span style="font-size: 22px; color: #1a365d;">Muelle: ${item.muelle}</span>`;
             infoDiv.className = "info-success";
