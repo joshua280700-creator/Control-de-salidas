@@ -3,263 +3,181 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Control de Salidas</title>
+    <title>Control de Salidas - Global</title>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
-        :root {
-            --primary: #1a365d;
-            --secondary: #2b6cb0;
-            --accent: #3182ce;
-            --bg-color: #f7fafc;
-            --text-main: #2d3748;
-            --text-light: #718096;
-        }
-
+        :root { --primary: #1a365d; --secondary: #2b6cb0; --accent: #3182ce; --bg-color: #f7fafc; --text-main: #2d3748; --text-light: #718096; }
         body { font-family: 'Segoe UI', system-ui, sans-serif; margin: 0; background: var(--bg-color); color: var(--text-main); padding-bottom: 30px; }
-        header { background: linear-gradient(135deg, var(--primary), var(--secondary)); color: white; padding: 20px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 20px; }
-        header h1 { margin: 0; font-size: 24px; }
-        header p { margin: 5px 0 0 0; font-size: 14px; opacity: 0.9; }
-        .container { max-width: 600px; margin: 0 auto; padding: 0 15px; }
+        header { background: linear-gradient(135deg, var(--primary), var(--secondary)); color: white; padding: 20px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .container { max-width: 600px; margin: 0 auto; padding: 15px; }
         .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 20px; }
-        h3 { margin-top: 0; color: var(--primary); font-size: 18px; border-bottom: 2px solid #edf2f7; padding-bottom: 10px; }
-
-        #loader { text-align: center; padding: 30px 20px; }
-        .spinner { border: 4px solid #edf2f7; border-top: 4px solid var(--accent); border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto 15px auto; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-
         .dashboard { display: flex; justify-content: space-between; background: #edf2f7; padding: 15px; border-radius: 8px; margin-bottom: 15px; text-align: center; }
         .stat-box { flex: 1; border-right: 1px solid #cbd5e0; }
         .stat-box:last-child { border-right: none; }
-        .stat-title { font-size: 12px; color: var(--text-light); text-transform: uppercase; font-weight: bold; }
-        .stat-number { font-size: 24px; font-weight: bold; color: var(--primary); margin-top: 5px; }
-        .stat-faltante { color: #e53e3e; }
-
-        #reader { width: 100%; border-radius: 12px; overflow: hidden; border: 4px solid transparent; transition: all 0.2s ease; background-color: #000; }
+        .stat-title { font-size: 11px; color: var(--text-light); font-weight: bold; }
+        .stat-number { font-size: 22px; font-weight: bold; color: var(--primary); }
+        #reader { width: 100%; border-radius: 12px; overflow: hidden; background: #000; border: 4px solid transparent; transition: 0.2s; }
         .reader-warning { border-color: #dd6b20 !important; }
-        .reader-error { border-color: #e53e3e !important; }
         .reader-success { border-color: #38a169 !important; }
-
-        #scannedInfo { margin-top: 15px; padding: 15px; border-radius: 8px; font-weight: 600; text-align: center; font-size: 16px; background: #edf2f7; transition: all 0.3s ease; }
-        .info-success { background: #c6f6d5 !important; color: #22543d !important; border: 1px solid #9ae6b4; }
-        .info-error { background: #fed7d7 !important; color: #822727 !important; border: 1px solid #feb2b2; }
-        .info-warning { background: #feebc8 !important; color: #9c4221 !important; border: 1px solid #fbd38d; }
-
-        .table-container { overflow-x: auto; }
-        table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 10px; }
-        th, td { border-bottom: 1px solid #edf2f7; padding: 12px 8px; text-align: center; }
-        th { background: #f7fafc; color: var(--text-light); }
-        .badge { padding: 4px 8px; border-radius: 12px; font-size: 11px; font-weight: bold; }
-        .badge-sync { background: #feebc8; color: #c05621; }
-        .badge-ok { background: #c6f6d5; color: #22543d; }
-        .badge-fail { background: #fed7d7; color: #822727; }
+        #scannedInfo { margin-top: 15px; padding: 15px; border-radius: 8px; text-align: center; font-weight: 600; background: #edf2f7; }
+        .info-success { background: #c6f6d5 !important; color: #22543d !important; }
+        .info-warning { background: #feebc8 !important; color: #9c4221 !important; }
     </style>
 </head>
 <body>
 
 <header>
     <h1>Control de Salidas</h1>
-    <p>Supervisor de Monitoreo</p>
+    <p>Operación Colaborativa - Rombo</p>
 </header>
 
 <div class="container">
-    <div class="card" id="loader">
-        <div class="spinner"></div>
-        <div id="loader-text">Sincronizando catálogo de guías únicas...</div>
+    <div id="loader" class="card" style="text-align:center;">
+        <p>Sincronizando con la nube...</p>
     </div>
 
-    <div class="card" id="scanner-container" style="display:none;">
-        <h3>Progreso de Carga (Guías Únicas)</h3>
-        <div class="dashboard">
-            <div class="stat-box">
-                <div class="stat-title">Total Únicos</div>
-                <div class="stat-number" id="countTotal">0</div>
+    <div id="main-content" style="display:none;">
+        <div class="card">
+            <h3>Progreso Global de Carga</h3>
+            <div class="dashboard">
+                <div class="stat-box">
+                    <div class="stat-title">TOTAL DÍA</div>
+                    <div class="stat-number" id="countTotal">0</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-title">ESCANEADOS</div>
+                    <div class="stat-number" id="countScanned">0</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-title">FALTANTES</div>
+                    <div class="stat-number" style="color:#e53e3e" id="countRemaining">0</div>
+                </div>
             </div>
-            <div class="stat-box">
-                <div class="stat-title">Escaneados</div>
-                <div class="stat-number" id="countScanned">0</div>
-            </div>
-            <div class="stat-box">
-                <div class="stat-title">Faltantes</div>
-                <div class="stat-number stat-faltante" id="countRemaining">0</div>
-            </div>
-        </div>
-        <div id="reader"></div>
-        <div id="scannedInfo">📷 Iniciando cámara trasera...</div>
-    </div>
-
-    <div class="card" id="history-container" style="display:none;">
-        <h3>Historial de Escaneo</h3>
-        <div class="table-container">
-            <table id="logTable">
-                <thead><tr><th>Guía</th><th>Muelle</th><th>Ruta</th><th>Status</th></tr></thead>
-                <tbody></tbody>
-            </table>
+            <div id="reader"></div>
+            <div id="scannedInfo">📷 Listo para escanear</div>
         </div>
     </div>
 </div>
 
 <script>
     let CATALOGO = {};
-    let ESCANEADOS = new Set(); 
-    let scanPausado = false; 
+    let ESCANEADOS = new Set();
     let totalPaquetesUnicos = 0;
-    
-    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxMGdBd5Co_e2ar4LbbUVUhzjy_PKYIsWKwEwVHlgIkLX2s-xUyG-BPspiAQ62vGsL3/exec";
+    let scanPausado = false;
+    const WEB_APP_URL = "TU_NUEVA_URL_DE_IMPLEMENTACION_AQUI";
 
     const AudioContext = window.AudioContext || window.webkitAudioContext;
     const audioCtx = new AudioContext();
 
-    function generarSonido(frecuencia, duracion, tipo = 'sine') {
+    function generarSonido(f, d, t = 'sine') {
         if(audioCtx.state === 'suspended') audioCtx.resume();
-        const oscillator = audioCtx.createOscillator();
-        const gainNode = audioCtx.createGain();
-        oscillator.type = tipo;
-        oscillator.frequency.setValueAtTime(frecuencia, audioCtx.currentTime);
-        gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + duracion);
-        oscillator.connect(gainNode);
-        gainNode.connect(audioCtx.destination);
-        oscillator.start();
-        oscillator.stop(audioCtx.currentTime + duracion);
+        const o = audioCtx.createOscillator(); const g = audioCtx.createGain();
+        o.type = t; o.frequency.setValueAtTime(f, audioCtx.currentTime);
+        g.gain.setValueAtTime(0.1, audioCtx.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + d);
+        o.connect(g); g.connect(audioCtx.destination);
+        o.start(); o.stop(audioCtx.currentTime + d);
     }
 
-    function sonidoExito() { generarSonido(800, 0.1); setTimeout(() => generarSonido(1200, 0.15), 100); }
-    function sonidoError() { generarSonido(300, 0.4, 'square'); }
-
-    function actualizarContadores() {
-        const escaneados = ESCANEADOS.size;
-        const faltantes = totalPaquetesUnicos - escaneados;
-        document.getElementById('countTotal').innerText = totalPaquetesUnicos;
-        document.getElementById('countScanned').innerText = escaneados;
-        document.getElementById('countRemaining').innerText = faltantes >= 0 ? faltantes : 0;
-    }
-
-    async function cargarCatalogo() {
+    async function sincronizarConSheets() {
         try {
-            const posiblesNombresViajes = ['Viajes.xlsx', 'Viajes (1).xlsx', 'Viajes (2).xlsx', 'Viajes (3).xlsx', 'Viajes (4).xlsx'];
-            let resViajes = null;
-            for (let nombre of posiblesNombresViajes) {
-                let intento = await fetch(nombre);
-                if (intento.ok) { resViajes = intento; break; }
-            }
-            const resMuelle = await fetch('Muelle.xlsx');
-            if(!resViajes || !resMuelle.ok) throw new Error("Excel de Viajes o Muelle no encontrado en GitHub.");
+            const res = await fetch(WEB_APP_URL);
+            const yaEscaneadosGlobal = await res.json();
+            yaEscaneadosGlobal.forEach(g => ESCANEADOS.add(g));
+            actualizarUI();
+            console.log("Sincronización global completada");
+        } catch (e) { console.error("Error de sincronización:", e); }
+    }
 
-            const dataV = await resViajes.arrayBuffer();
-            const dataM = await resMuelle.arrayBuffer();
-            const wbV = XLSX.read(dataV, {type: 'array'});
-            const wbM = XLSX.read(dataM, {type: 'array'});
+    function actualizarUI() {
+        document.getElementById('countTotal').innerText = totalPaquetesUnicos;
+        document.getElementById('countScanned').innerText = ESCANEADOS.size;
+        document.getElementById('countRemaining').innerText = Math.max(0, totalPaquetesUnicos - ESCANEADOS.size);
+    }
 
+    async function iniciarApp() {
+        try {
+            const posiblesNombres = ['Viajes.xlsx', 'Viajes (1).xlsx', 'Viajes (2).xlsx', 'Viajes (3).xlsx'];
+            let resV = null;
+            for (let n of posiblesNombres) { let i = await fetch(n); if(i.ok) { resV = i; break; } }
+            const resM = await fetch('Muelle.xlsx');
+            
+            if(!resV || !resM.ok) throw new Error("Faltan Excels en GitHub");
+
+            const wbV = XLSX.read(await resV.arrayBuffer(), {type: 'array'});
+            const wbM = XLSX.read(await resM.arrayBuffer(), {type: 'array'});
             const paradas = XLSX.utils.sheet_to_json(wbV.Sheets["Paradas"]);
             const muelles = XLSX.utils.sheet_to_json(wbM.Sheets[wbM.SheetNames[0]]);
 
-            // Usamos un objeto para filtrar duplicados por "Pedido Referencia externa"
             paradas.forEach(p => {
-                const guia = p["Pedido Referencia externa"];
-                const idViaje = p["IdViaje"];
-                
-                // Si la guía ya está en el catálogo, no la sobreescribimos (evita el conteo de 6000+)
+                let guia = p["Pedido Referencia externa"]?.toString().trim();
                 if (guia && !CATALOGO[guia]) {
-                    const infoMuelle = muelles.find(m => m["ID"].toString().startsWith(idViaje.toString()));
-                    if(infoMuelle) {
-                        let muelleFinal = infoMuelle["Muelle de salida"];
-                        const idCompleto = infoMuelle["ID"].toString();
-                        if(idCompleto.includes("-")) {
-                            const oleada = idCompleto.split("-")[1].trim();
-                            if(oleada !== "1") muelleFinal += oleada;
+                    const idV = p["IdViaje"];
+                    const m = muelles.find(m => m["ID"].toString().startsWith(idV.toString()));
+                    if(m) {
+                        let mf = m["Muelle de salida"];
+                        if(m["ID"].toString().includes("-")) {
+                            let o = m["ID"].toString().split("-")[1].trim();
+                            if(o !== "1") mf += o;
                         }
-                        CATALOGO[guia] = { muelle: muelleFinal, ruta: idCompleto, orden: p["Orden"] || 0 };
+                        CATALOGO[guia] = { muelle: mf, ruta: m["ID"], orden: p["Orden"] || 0 };
                     }
                 }
             });
 
             totalPaquetesUnicos = Object.keys(CATALOGO).length;
-            actualizarContadores();
+            
+            // PRIMERA SINCRONIZACIÓN CON SHEETS
+            await sincronizarConSheets();
 
             document.getElementById('loader').style.display = 'none';
-            document.getElementById('scanner-container').style.display = 'block';
-            document.getElementById('history-container').style.display = 'block';
-            iniciarCamaraTrasera(); 
+            document.getElementById('main-content').style.display = 'block';
+            
+            const scanner = new Html5Qrcode("reader");
+            scanner.start({ facingMode: "environment" }, { fps: 15, qrbox: 250 }, onScanSuccess);
 
-        } catch (error) {
-            document.getElementById('loader-text').innerHTML = "❌ Error:<br>" + error.message;
-            document.querySelector('.spinner').style.display = 'none';
-        }
+            // AUTO-ACTUALIZACIÓN CADA 30 SEGUNDOS
+            setInterval(sincronizarConSheets, 30000);
+
+        } catch (e) { document.getElementById('loader').innerText = "Error: " + e.message; }
     }
 
-    function iniciarCamaraTrasera() {
-        const html5QrCode = new Html5Qrcode("reader");
-        html5QrCode.start(
-            { facingMode: "environment" }, 
-            { fps: 15, qrbox: { width: 250, height: 250 } },
-            onScanSuccess
-        ).catch(() => {
-            document.getElementById('scannedInfo').innerHTML = "❌ Revisa permisos de cámara.";
-        });
-    }
+    function onScanSuccess(t) {
+        if (scanPausado) return;
+        const guia = t.trim();
+        const info = document.getElementById('scannedInfo');
+        const reader = document.getElementById('reader');
 
-    function onScanSuccess(decodedText) {
-        if (scanPausado) return; 
-        const infoDiv = document.getElementById('scannedInfo');
-        const readerDiv = document.getElementById('reader');
-
-        if (ESCANEADOS.has(decodedText)) {
-            sonidoError();
-            infoDiv.innerHTML = `⚠️ YA ESCANEADA<br><span style="font-size: 14px;">La guía ${decodedText} ya fue registrada.</span>`;
-            infoDiv.className = "info-warning";
-            readerDiv.className = "reader-warning";
-            pausarEscaneo(1500); 
-            return;
+        if (ESCANEADOS.has(guia)) {
+            generarSonido(300, 0.4, 'square');
+            info.innerHTML = `⚠️ YA REGISTRADO<br>Guía: ${guia}`;
+            info.className = "info-warning";
+            reader.className = "reader-warning";
+            pausar(1500); return;
         }
 
-        const item = CATALOGO[decodedText];
+        const item = CATALOGO[guia];
         if(item) {
-            sonidoExito();
-            ESCANEADOS.add(decodedText); 
-            actualizarContadores();
-            infoDiv.innerHTML = `✅ ÉXITO<br><span style="font-size: 22px; color: #1a365d;">Muelle: ${item.muelle}</span>`;
-            infoDiv.className = "info-success";
-            readerDiv.className = "reader-success";
-            setTimeout(() => readerDiv.className = "", 500);
-            enviarASheets(decodedText, item);
-            pausarEscaneo(800); 
+            generarSonido(800, 0.1); setTimeout(() => generarSonido(1200, 0.15), 100);
+            ESCANEADOS.add(guia);
+            actualizarUI();
+            info.innerHTML = `✅ ÉXITO<br>Muelle: ${item.muelle}`;
+            info.className = "info-success";
+            reader.className = "reader-success";
+            fetch(WEB_APP_URL, { method: "POST", mode: "no-cors", body: JSON.stringify({guia: guia, muelle: item.muelle, ruta: item.ruta, orden: item.orden}) });
+            pausar(800);
         } else {
-            sonidoError();
-            infoDiv.innerHTML = `❌ NO AUTORIZADA<br><span style="font-size: 14px;">Guía ${decodedText} fuera del catálogo.</span>`;
-            infoDiv.className = "info-error";
-            readerDiv.className = "reader-error";
-            pausarEscaneo(1500);
+            generarSonido(300, 0.4, 'square');
+            info.innerHTML = `❌ NO EN CATÁLOGO<br>Guía: ${guia}`;
+            info.className = "info-error";
+            pausar(1500);
         }
     }
 
-    function pausarEscaneo(tiempoEspera) {
-        scanPausado = true;
-        setTimeout(() => {
-            scanPausado = false;
-            document.getElementById('reader').className = ""; 
-            document.getElementById('scannedInfo').className = "";
-            document.getElementById('scannedInfo').innerHTML = "📷 Cámara lista.";
-        }, tiempoEspera);
-    }
+    function pausar(ms) { scanPausado = true; setTimeout(() => { scanPausado = false; document.getElementById('reader').className = ""; document.getElementById('scannedInfo').className = ""; document.getElementById('scannedInfo').innerHTML = "📷 Cámara lista"; }, ms); }
 
-    async function enviarASheets(guia, item) {
-        const table = document.getElementById('logTable').querySelector('tbody');
-        const row = table.insertRow(0);
-        let rutaCorta = item.ruta.split(" - ")[0]; 
-        row.innerHTML = `<td><strong>${guia}</strong></td><td><span style="font-weight: bold;">${item.muelle}</span></td><td>${rutaCorta}</td><td><span class="badge badge-sync">...</span></td>`;
-        try {
-            await fetch(WEB_APP_URL, {
-                method: "POST", mode: "no-cors",
-                body: JSON.stringify({guia: guia, muelle: item.muelle, ruta: item.ruta, orden: item.orden})
-            });
-            row.cells[3].innerHTML = '<span class="badge badge-ok">OK</span>';
-        } catch(e) {
-            row.cells[3].innerHTML = '<span class="badge badge-fail">Error</span>';
-        }
-    }
-
-    window.onload = cargarCatalogo;
+    window.onload = iniciarApp;
 </script>
 </body>
 </html>
