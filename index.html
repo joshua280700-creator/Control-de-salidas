@@ -3,180 +3,325 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Control de Salidas - Global</title>
+    <title>Control de Salidas - Operación Global</title>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
-        :root { --primary: #1a365d; --secondary: #2b6cb0; --accent: #3182ce; --bg-color: #f7fafc; --text-main: #2d3748; --text-light: #718096; }
+        :root {
+            --primary: #1a365d;
+            --secondary: #2b6cb0;
+            --accent: #3182ce;
+            --bg-color: #f7fafc;
+            --text-main: #2d3748;
+            --text-light: #718096;
+        }
+
         body { font-family: 'Segoe UI', system-ui, sans-serif; margin: 0; background: var(--bg-color); color: var(--text-main); padding-bottom: 30px; }
-        header { background: linear-gradient(135deg, var(--primary), var(--secondary)); color: white; padding: 20px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        .container { max-width: 600px; margin: 0 auto; padding: 15px; }
+        header { background: linear-gradient(135deg, var(--primary), var(--secondary)); color: white; padding: 20px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        header h1 { margin: 0; font-size: 24px; }
+        header p { margin: 5px 0 0 0; font-size: 14px; opacity: 0.9; }
+        
+        .container { max-width: 600px; margin: 0 auto; padding: 0 15px; }
         .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        h3 { margin-top: 0; color: var(--primary); font-size: 18px; border-bottom: 2px solid #edf2f7; padding-bottom: 10px; }
+
+        /* Loader */
+        #loader { text-align: center; padding: 30px 20px; }
+        .spinner { border: 4px solid #edf2f7; border-top: 4px solid var(--accent); border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto 15px auto; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* Dashboard de Contadores */
         .dashboard { display: flex; justify-content: space-between; background: #edf2f7; padding: 15px; border-radius: 8px; margin-bottom: 15px; text-align: center; }
         .stat-box { flex: 1; border-right: 1px solid #cbd5e0; }
         .stat-box:last-child { border-right: none; }
-        .stat-title { font-size: 11px; color: var(--text-light); font-weight: bold; }
-        .stat-number { font-size: 22px; font-weight: bold; color: var(--primary); }
-        #reader { width: 100%; border-radius: 12px; overflow: hidden; background: #000; border: 4px solid transparent; transition: 0.2s; }
-        .reader-warning { border-color: #dd6b20 !important; }
-        .reader-success { border-color: #38a169 !important; }
-        #scannedInfo { margin-top: 15px; padding: 15px; border-radius: 8px; text-align: center; font-weight: 600; background: #edf2f7; }
-        .info-success { background: #c6f6d5 !important; color: #22543d !important; }
-        .info-warning { background: #feebc8 !important; color: #9c4221 !important; }
+        .stat-title { font-size: 11px; color: var(--text-light); text-transform: uppercase; font-weight: bold; }
+        .stat-number { font-size: 24px; font-weight: bold; color: var(--primary); margin-top: 5px; }
+        .stat-faltante { color: #e53e3e; }
+
+        /* Escáner y Alertas Visuales */
+        #reader { width: 100%; border-radius: 12px; overflow: hidden; border: 4px solid transparent; transition: all 0.2s ease; background-color: #000; }
+        .reader-warning { border-color: #dd6b20 !important; box-shadow: 0 0 15px rgba(221, 107, 32, 0.5); }
+        .reader-error { border-color: #e53e3e !important; box-shadow: 0 0 15px rgba(229, 62, 62, 0.5); }
+        .reader-success { border-color: #38a169 !important; box-shadow: 0 0 15px rgba(56, 161, 105, 0.4); }
+
+        #scannedInfo { margin-top: 15px; padding: 15px; border-radius: 8px; font-weight: 600; text-align: center; font-size: 16px; background: #edf2f7; transition: all 0.3s ease; }
+        .info-success { background: #c6f6d5 !important; color: #22543d !important; border: 1px solid #9ae6b4; }
+        .info-error { background: #fed7d7 !important; color: #822727 !important; border: 1px solid #feb2b2; }
+        .info-warning { background: #feebc8 !important; color: #9c4221 !important; border: 1px solid #fbd38d; }
+
+        /* Tabla de Historial */
+        .table-container { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 10px; }
+        th, td { border-bottom: 1px solid #edf2f7; padding: 12px 8px; text-align: center; }
+        th { background: #f7fafc; color: var(--text-light); font-size: 11px; text-transform: uppercase; }
+        .badge { padding: 4px 8px; border-radius: 12px; font-size: 11px; font-weight: bold; }
+        .badge-sync { background: #feebc8; color: #c05621; }
+        .badge-ok { background: #c6f6d5; color: #22543d; }
+        .badge-fail { background: #fed7d7; color: #822727; }
     </style>
 </head>
 <body>
 
 <header>
     <h1>Control de Salidas</h1>
-    <p>Operación Colaborativa - Rombo</p>
+    <p>Operación Colaborativa Rombo</p>
 </header>
 
 <div class="container">
-    <div id="loader" class="card" style="text-align:center;">
-        <p>Sincronizando con la nube...</p>
+    <div class="card" id="loader">
+        <div class="spinner"></div>
+        <div id="loader-text">Inicializando sistema y sincronizando nube...</div>
     </div>
 
     <div id="main-content" style="display:none;">
         <div class="card">
-            <h3>Progreso Global de Carga</h3>
+            <h3>Progreso Global</h3>
             <div class="dashboard">
                 <div class="stat-box">
-                    <div class="stat-title">TOTAL DÍA</div>
+                    <div class="stat-title">Total Físico</div>
                     <div class="stat-number" id="countTotal">0</div>
                 </div>
                 <div class="stat-box">
-                    <div class="stat-title">ESCANEADOS</div>
+                    <div class="stat-title">Escaneados</div>
                     <div class="stat-number" id="countScanned">0</div>
                 </div>
                 <div class="stat-box">
-                    <div class="stat-title">FALTANTES</div>
-                    <div class="stat-number" style="color:#e53e3e" id="countRemaining">0</div>
+                    <div class="stat-title">Faltantes</div>
+                    <div class="stat-number stat-faltante" id="countRemaining">0</div>
                 </div>
             </div>
+            
             <div id="reader"></div>
-            <div id="scannedInfo">📷 Listo para escanear</div>
+            <div id="scannedInfo">📷 Iniciando cámara...</div>
+        </div>
+
+        <div class="card">
+            <h3>Historial Local</h3>
+            <div class="table-container">
+                <table id="logTable">
+                    <thead><tr><th>Guía</th><th>Muelle</th><th>Ruta</th><th>Status</th></tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
         </div>
     </div>
 </div>
 
 <script>
+    // --- VARIABLES GLOBALES ---
     let CATALOGO = {};
-    let ESCANEADOS = new Set();
+    let ESCANEADOS = new Set(); // Memoria colaborativa
     let totalPaquetesUnicos = 0;
-    let scanPausado = false;
-    const WEB_APP_URL = "TU_NUEVA_URL_DE_IMPLEMENTACION_AQUI";
+    let scanPausado = false; 
+    
+    // ⚠️ REEMPLAZA ESTA URL CON TU NUEVA IMPLEMENTACIÓN DE APPS SCRIPT
+    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbw8drrVJiEM5PyMQ7_Ok3F2o1i1DjT44WgpP5yKvPQddkQRVI7yx3o2WAxX5AM3TWul/exec";
 
+    // --- SISTEMA DE AUDIO NATIVO ---
     const AudioContext = window.AudioContext || window.webkitAudioContext;
     const audioCtx = new AudioContext();
 
-    function generarSonido(f, d, t = 'sine') {
+    function generarSonido(frecuencia, duracion, tipo = 'sine') {
         if(audioCtx.state === 'suspended') audioCtx.resume();
-        const o = audioCtx.createOscillator(); const g = audioCtx.createGain();
-        o.type = t; o.frequency.setValueAtTime(f, audioCtx.currentTime);
-        g.gain.setValueAtTime(0.1, audioCtx.currentTime);
-        g.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + d);
-        o.connect(g); g.connect(audioCtx.destination);
-        o.start(); o.stop(audioCtx.currentTime + d);
+        const oscillator = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+        oscillator.type = tipo;
+        oscillator.frequency.setValueAtTime(frecuencia, audioCtx.currentTime);
+        gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + duracion);
+        oscillator.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+        oscillator.start();
+        oscillator.stop(audioCtx.currentTime + duracion);
+    }
+
+    function sonidoExito() { generarSonido(800, 0.1); setTimeout(() => generarSonido(1200, 0.15), 100); }
+    function sonidoError() { generarSonido(300, 0.4, 'square'); }
+
+    // --- SINCRONIZACIÓN Y UI ---
+    function actualizarContadores() {
+        const escaneados = ESCANEADOS.size;
+        const faltantes = totalPaquetesUnicos - escaneados;
+        document.getElementById('countTotal').innerText = totalPaquetesUnicos;
+        document.getElementById('countScanned').innerText = escaneados;
+        document.getElementById('countRemaining').innerText = faltantes >= 0 ? faltantes : 0;
     }
 
     async function sincronizarConSheets() {
         try {
-            const res = await fetch(WEB_APP_URL);
-            const yaEscaneadosGlobal = await res.json();
-            yaEscaneadosGlobal.forEach(g => ESCANEADOS.add(g));
-            actualizarUI();
-            console.log("Sincronización global completada");
-        } catch (e) { console.error("Error de sincronización:", e); }
+            const respuesta = await fetch(WEB_APP_URL);
+            const guiasEnNube = await respuesta.json();
+            
+            // Agregamos lo que ya está en Sheets a la memoria local
+            if(Array.isArray(guiasEnNube)) {
+                guiasEnNube.forEach(guia => ESCANEADOS.add(guia.toString().trim()));
+            }
+            actualizarContadores();
+            console.log("Sincronización global completada a las: " + new Date().toLocaleTimeString());
+        } catch (error) {
+            console.error("Error al sincronizar con Sheets:", error);
+        }
     }
 
-    function actualizarUI() {
-        document.getElementById('countTotal').innerText = totalPaquetesUnicos;
-        document.getElementById('countScanned').innerText = ESCANEADOS.size;
-        document.getElementById('countRemaining').innerText = Math.max(0, totalPaquetesUnicos - ESCANEADOS.size);
-    }
-
+    // --- CARGA INICIAL DE EXCELS ---
     async function iniciarApp() {
         try {
-            const posiblesNombres = ['Viajes.xlsx', 'Viajes (1).xlsx', 'Viajes (2).xlsx', 'Viajes (3).xlsx'];
-            let resV = null;
-            for (let n of posiblesNombres) { let i = await fetch(n); if(i.ok) { resV = i; break; } }
-            const resM = await fetch('Muelle.xlsx');
-            
-            if(!resV || !resM.ok) throw new Error("Faltan Excels en GitHub");
+            // Radar de nombres
+            const posiblesNombresViajes = ['Viajes.xlsx', 'Viajes (1).xlsx', 'Viajes (2).xlsx', 'Viajes (3).xlsx', 'Viajes (4).xlsx', 'Viajes (5).xlsx'];
+            let resViajes = null;
+            for (let nombre of posiblesNombresViajes) {
+                let intento = await fetch(nombre);
+                if (intento.ok) { resViajes = intento; break; }
+            }
+            const resMuelle = await fetch('Muelle.xlsx');
+            if(!resViajes || !resMuelle.ok) throw new Error("Archivos Excel no encontrados en GitHub.");
 
-            const wbV = XLSX.read(await resV.arrayBuffer(), {type: 'array'});
-            const wbM = XLSX.read(await resM.arrayBuffer(), {type: 'array'});
+            const dataV = await resViajes.arrayBuffer();
+            const dataM = await resMuelle.arrayBuffer();
+            const wbV = XLSX.read(dataV, {type: 'array'});
+            const wbM = XLSX.read(dataM, {type: 'array'});
+
             const paradas = XLSX.utils.sheet_to_json(wbV.Sheets["Paradas"]);
             const muelles = XLSX.utils.sheet_to_json(wbM.Sheets[wbM.SheetNames[0]]);
 
+            let guiasUnicasSet = new Set();
+
+            // Filtrado estricto de guías únicas
             paradas.forEach(p => {
-                let guia = p["Pedido Referencia externa"]?.toString().trim();
-                if (guia && !CATALOGO[guia]) {
-                    const idV = p["IdViaje"];
-                    const m = muelles.find(m => m["ID"].toString().startsWith(idV.toString()));
-                    if(m) {
-                        let mf = m["Muelle de salida"];
-                        if(m["ID"].toString().includes("-")) {
-                            let o = m["ID"].toString().split("-")[1].trim();
-                            if(o !== "1") mf += o;
+                let filaLimpia = {};
+                for (let key in p) filaLimpia[key.trim()] = p[key];
+
+                const guiaBruta = filaLimpia["Pedido Referencia externa"];
+                const idViaje = filaLimpia["IdViaje"];
+                
+                if (guiaBruta !== undefined && guiaBruta !== null && guiaBruta !== "") {
+                    let guiaStr = guiaBruta.toString().trim();
+                    guiasUnicasSet.add(guiaStr);
+
+                    if (!CATALOGO[guiaStr]) {
+                        const infoMuelle = muelles.find(m => m["ID"] && m["ID"].toString().startsWith(idViaje.toString()));
+                        if(infoMuelle) {
+                            let muelleFinal = infoMuelle["Muelle de salida"];
+                            const idCompleto = infoMuelle["ID"].toString();
+                            // Lógica de Oleadas
+                            if(idCompleto.includes("-")) {
+                                const oleada = idCompleto.split("-")[1].trim();
+                                if(oleada !== "1") muelleFinal += oleada;
+                            }
+                            CATALOGO[guiaStr] = { muelle: muelleFinal, ruta: idCompleto, orden: filaLimpia["Orden"] || 0 };
                         }
-                        CATALOGO[guia] = { muelle: mf, ruta: m["ID"], orden: p["Orden"] || 0 };
                     }
                 }
             });
 
-            totalPaquetesUnicos = Object.keys(CATALOGO).length;
-            
-            // PRIMERA SINCRONIZACIÓN CON SHEETS
+            totalPaquetesUnicos = guiasUnicasSet.size;
+
+            // Hacemos la primera sincronización con la nube
             await sincronizarConSheets();
 
+            // Desplegamos la interfaz
             document.getElementById('loader').style.display = 'none';
             document.getElementById('main-content').style.display = 'block';
             
-            const scanner = new Html5Qrcode("reader");
-            scanner.start({ facingMode: "environment" }, { fps: 15, qrbox: 250 }, onScanSuccess);
+            iniciarCamaraTrasera(); 
 
-            // AUTO-ACTUALIZACIÓN CADA 30 SEGUNDOS
+            // Dejamos programada la auto-actualización cada 30 segundos
             setInterval(sincronizarConSheets, 30000);
 
-        } catch (e) { document.getElementById('loader').innerText = "Error: " + e.message; }
+        } catch (error) {
+            document.getElementById('loader-text').innerHTML = "❌ Error:<br>" + error.message;
+            document.querySelector('.spinner').style.display = 'none';
+        }
     }
 
-    function onScanSuccess(t) {
-        if (scanPausado) return;
-        const guia = t.trim();
-        const info = document.getElementById('scannedInfo');
-        const reader = document.getElementById('reader');
+    // --- ESCÁNER ---
+    function iniciarCamaraTrasera() {
+        const html5QrCode = new Html5Qrcode("reader");
+        html5QrCode.start(
+            { facingMode: "environment" }, 
+            { fps: 15, qrbox: { width: 250, height: 250 } },
+            onScanSuccess
+        ).then(() => {
+            document.getElementById('scannedInfo').innerHTML = "📷 Cámara lista. Apunta al código.";
+        }).catch(() => {
+            document.getElementById('scannedInfo').innerHTML = "❌ Error de cámara. Revisa los permisos del navegador.";
+            document.getElementById('scannedInfo').className = "info-error";
+        });
+    }
 
-        if (ESCANEADOS.has(guia)) {
-            generarSonido(300, 0.4, 'square');
-            info.innerHTML = `⚠️ YA REGISTRADO<br>Guía: ${guia}`;
-            info.className = "info-warning";
-            reader.className = "reader-warning";
-            pausar(1500); return;
+    function onScanSuccess(decodedText) {
+        if (scanPausado) return; 
+        
+        const guiaEscaneada = decodedText.trim();
+        const infoDiv = document.getElementById('scannedInfo');
+        const readerDiv = document.getElementById('reader');
+
+        // 1. Validar Antiduplicados
+        if (ESCANEADOS.has(guiaEscaneada)) {
+            sonidoError();
+            infoDiv.innerHTML = `⚠️ YA ESCANEADA<br><span style="font-size: 14px;">La guía ${guiaEscaneada} ya está registrada en la nube.</span>`;
+            infoDiv.className = "info-warning";
+            readerDiv.className = "reader-warning";
+            pausarEscaneo(1500); 
+            return;
         }
 
-        const item = CATALOGO[guia];
+        const item = CATALOGO[guiaEscaneada];
+        
+        // 2. Validar Existencia en Catálogo
         if(item) {
-            generarSonido(800, 0.1); setTimeout(() => generarSonido(1200, 0.15), 100);
-            ESCANEADOS.add(guia);
-            actualizarUI();
-            info.innerHTML = `✅ ÉXITO<br>Muelle: ${item.muelle}`;
-            info.className = "info-success";
-            reader.className = "reader-success";
-            fetch(WEB_APP_URL, { method: "POST", mode: "no-cors", body: JSON.stringify({guia: guia, muelle: item.muelle, ruta: item.ruta, orden: item.orden}) });
-            pausar(800);
+            sonidoExito();
+            ESCANEADOS.add(guiaEscaneada); 
+            actualizarContadores();
+            
+            infoDiv.innerHTML = `✅ ÉXITO<br><span style="font-size: 22px; color: #1a365d;">Muelle: ${item.muelle}</span>`;
+            infoDiv.className = "info-success";
+            
+            readerDiv.className = "reader-success";
+            setTimeout(() => readerDiv.className = "", 500);
+            
+            enviarASheets(guiaEscaneada, item);
+            pausarEscaneo(800); 
         } else {
-            generarSonido(300, 0.4, 'square');
-            info.innerHTML = `❌ NO EN CATÁLOGO<br>Guía: ${guia}`;
-            info.className = "info-error";
-            pausar(1500);
+            sonidoError();
+            infoDiv.innerHTML = `❌ NO AUTORIZADA<br><span style="font-size: 14px;">Guía ${guiaEscaneada} fuera del catálogo.</span>`;
+            infoDiv.className = "info-error";
+            
+            readerDiv.className = "reader-error";
+            pausarEscaneo(1500);
         }
     }
 
-    function pausar(ms) { scanPausado = true; setTimeout(() => { scanPausado = false; document.getElementById('reader').className = ""; document.getElementById('scannedInfo').className = ""; document.getElementById('scannedInfo').innerHTML = "📷 Cámara lista"; }, ms); }
+    function pausarEscaneo(tiempoEspera) {
+        scanPausado = true;
+        setTimeout(() => {
+            scanPausado = false;
+            document.getElementById('reader').className = ""; 
+            document.getElementById('scannedInfo').className = "";
+            document.getElementById('scannedInfo').innerHTML = "📷 Cámara lista.";
+        }, tiempoEspera);
+    }
 
+    // --- ENVÍO DE DATOS ---
+    async function enviarASheets(guia, item) {
+        const table = document.getElementById('logTable').querySelector('tbody');
+        const row = table.insertRow(0);
+        let rutaCorta = item.ruta.split(" - ")[0]; 
+        
+        row.innerHTML = `<td><strong>${guia}</strong></td><td><span style="font-weight: bold; color: var(--primary);">${item.muelle}</span></td><td>${rutaCorta}</td><td><span class="badge badge-sync">...</span></td>`;
+
+        try {
+            await fetch(WEB_APP_URL, {
+                method: "POST", mode: "no-cors",
+                body: JSON.stringify({guia: guia, muelle: item.muelle, ruta: item.ruta, orden: item.orden})
+            });
+            row.cells[3].innerHTML = '<span class="badge badge-ok">OK</span>';
+        } catch(e) {
+            row.cells[3].innerHTML = '<span class="badge badge-fail">Error</span>';
+        }
+    }
+
+    // Arrancamos todo al abrir
     window.onload = iniciarApp;
 </script>
 </body>
