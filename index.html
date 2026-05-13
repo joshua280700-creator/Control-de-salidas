@@ -64,7 +64,7 @@
 
 <header>
     <h1>Control de Salidas</h1>
-    <p>Operación Colaborativa Rombo</p>
+    <p>Operación Colaborativa</p>
 </header>
 
 <div class="container">
@@ -108,16 +108,14 @@
 </div>
 
 <script>
-    // --- VARIABLES GLOBALES ---
     let CATALOGO = {};
-    let ESCANEADOS = new Set(); // Memoria colaborativa
+    let ESCANEADOS = new Set(); 
     let totalPaquetesUnicos = 0;
     let scanPausado = false; 
     
-    // ⚠️ REEMPLAZA ESTA URL CON TU NUEVA IMPLEMENTACIÓN DE APPS SCRIPT
-    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwtljpzO27Yc58GAnOqj8eTK8ZThQdcFQYmrKZynZMxX3r3xctGrkZ6BXHA3_9C5lPI/exec";
+    // ⚠️ RECUERDA PONER TU URL DEL APPS SCRIPT AQUÍ
+    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbw8drrVJiEM5PyMQ7_Ok3F2o1i1DjT44WgpP5yKvPQddkQRVI7yx3o2WAxX5AM3TWul/exec";
 
-    // --- SISTEMA DE AUDIO NATIVO ---
     const AudioContext = window.AudioContext || window.webkitAudioContext;
     const audioCtx = new AudioContext();
 
@@ -138,7 +136,6 @@
     function sonidoExito() { generarSonido(800, 0.1); setTimeout(() => generarSonido(1200, 0.15), 100); }
     function sonidoError() { generarSonido(300, 0.4, 'square'); }
 
-    // --- SINCRONIZACIÓN Y UI ---
     function actualizarContadores() {
         const escaneados = ESCANEADOS.size;
         const faltantes = totalPaquetesUnicos - escaneados;
@@ -152,21 +149,17 @@
             const respuesta = await fetch(WEB_APP_URL);
             const guiasEnNube = await respuesta.json();
             
-            // Agregamos lo que ya está en Sheets a la memoria local
             if(Array.isArray(guiasEnNube)) {
                 guiasEnNube.forEach(guia => ESCANEADOS.add(guia.toString().trim()));
             }
             actualizarContadores();
-            console.log("Sincronización global completada a las: " + new Date().toLocaleTimeString());
         } catch (error) {
             console.error("Error al sincronizar con Sheets:", error);
         }
     }
 
-    // --- CARGA INICIAL DE EXCELS ---
     async function iniciarApp() {
         try {
-            // Radar de nombres
             const posiblesNombresViajes = ['Viajes.xlsx', 'Viajes (1).xlsx', 'Viajes (2).xlsx', 'Viajes (3).xlsx', 'Viajes (4).xlsx', 'Viajes (5).xlsx'];
             let resViajes = null;
             for (let nombre of posiblesNombresViajes) {
@@ -186,7 +179,6 @@
 
             let guiasUnicasSet = new Set();
 
-            // Filtrado estricto de guías únicas
             paradas.forEach(p => {
                 let filaLimpia = {};
                 for (let key in p) filaLimpia[key.trim()] = p[key];
@@ -203,7 +195,6 @@
                         if(infoMuelle) {
                             let muelleFinal = infoMuelle["Muelle de salida"];
                             const idCompleto = infoMuelle["ID"].toString();
-                            // Lógica de Oleadas
                             if(idCompleto.includes("-")) {
                                 const oleada = idCompleto.split("-")[1].trim();
                                 if(oleada !== "1") muelleFinal += oleada;
@@ -216,16 +207,13 @@
 
             totalPaquetesUnicos = guiasUnicasSet.size;
 
-            // Hacemos la primera sincronización con la nube
             await sincronizarConSheets();
 
-            // Desplegamos la interfaz
             document.getElementById('loader').style.display = 'none';
             document.getElementById('main-content').style.display = 'block';
             
             iniciarCamaraTrasera(); 
 
-            // Dejamos programada la auto-actualización cada 30 segundos
             setInterval(sincronizarConSheets, 30000);
 
         } catch (error) {
@@ -234,16 +222,33 @@
         }
     }
 
-    // --- ESCÁNER ---
     function iniciarCamaraTrasera() {
         const html5QrCode = new Html5Qrcode("reader");
+        
+        // AQUÍ ESTÁ LA MAGIA PARA LA CÁMARA
         html5QrCode.start(
             { facingMode: "environment" }, 
-            { fps: 15, qrbox: { width: 250, height: 250 } },
+            { 
+                fps: 15, 
+                // 1. Convertimos el cuadro en un RECTÁNGULO delgado (Mira Láser)
+                qrbox: { width: 300, height: 80 }, 
+                
+                // 2. Prohibimos estrictamente leer códigos QR, solo códigos de barras lineales
+                formatsToSupport: [ 
+                    Html5QrcodeSupportedFormats.CODE_128,
+                    Html5QrcodeSupportedFormats.CODE_39,
+                    Html5QrcodeSupportedFormats.EAN_13,
+                    Html5QrcodeSupportedFormats.EAN_8,
+                    Html5QrcodeSupportedFormats.UPC_A,
+                    Html5QrcodeSupportedFormats.UPC_E,
+                    Html5QrcodeSupportedFormats.ITF
+                ]
+            },
             onScanSuccess
         ).then(() => {
-            document.getElementById('scannedInfo').innerHTML = "📷 Cámara lista. Apunta al código.";
-        }).catch(() => {
+            document.getElementById('scannedInfo').innerHTML = "📷 Cámara lista. Centra el código de barras en la línea.";
+        }).catch((err) => {
+            console.log(err);
             document.getElementById('scannedInfo').innerHTML = "❌ Error de cámara. Revisa los permisos del navegador.";
             document.getElementById('scannedInfo').className = "info-error";
         });
@@ -256,7 +261,6 @@
         const infoDiv = document.getElementById('scannedInfo');
         const readerDiv = document.getElementById('reader');
 
-        // 1. Validar Antiduplicados
         if (ESCANEADOS.has(guiaEscaneada)) {
             sonidoError();
             infoDiv.innerHTML = `⚠️ YA ESCANEADA<br><span style="font-size: 14px;">La guía ${guiaEscaneada} ya está registrada en la nube.</span>`;
@@ -268,7 +272,6 @@
 
         const item = CATALOGO[guiaEscaneada];
         
-        // 2. Validar Existencia en Catálogo
         if(item) {
             sonidoExito();
             ESCANEADOS.add(guiaEscaneada); 
@@ -298,11 +301,10 @@
             scanPausado = false;
             document.getElementById('reader').className = ""; 
             document.getElementById('scannedInfo').className = "";
-            document.getElementById('scannedInfo').innerHTML = "📷 Cámara lista.";
+            document.getElementById('scannedInfo').innerHTML = "📷 Cámara lista. Centra el código en la línea.";
         }, tiempoEspera);
     }
 
-    // --- ENVÍO DE DATOS ---
     async function enviarASheets(guia, item) {
         const table = document.getElementById('logTable').querySelector('tbody');
         const row = table.insertRow(0);
@@ -321,7 +323,6 @@
         }
     }
 
-    // Arrancamos todo al abrir
     window.onload = iniciarApp;
 </script>
 </body>
