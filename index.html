@@ -22,8 +22,8 @@
         header p { margin: 5px 0 0 0; font-size: 14px; opacity: 0.9; }
         
         .container { max-width: 600px; margin: 0 auto; padding: 0 15px; }
-        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 20px; }
-        h3 { margin-top: 0; color: var(--primary); font-size: 18px; border-bottom: 2px solid #edf2f7; padding-bottom: 10px; }
+        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 20px; text-align: center; }
+        h3 { margin-top: 0; color: var(--primary); font-size: 18px; border-bottom: 2px solid #edf2f7; padding-bottom: 10px; text-align: left; }
 
         /* Loader */
         #loader { text-align: center; padding: 30px 20px; }
@@ -44,13 +44,28 @@
         .reader-error { border-color: #e53e3e !important; box-shadow: 0 0 15px rgba(229, 62, 62, 0.5); }
         .reader-success { border-color: #38a169 !important; box-shadow: 0 0 15px rgba(56, 161, 105, 0.4); }
 
+        /* Botón de Cambio de Lente */
+        .btn-lente {
+            display: none; /* Se oculta por defecto hasta detectar varias cámaras */
+            margin: 15px auto 5px auto;
+            background: var(--secondary);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+        }
+
         #scannedInfo { margin-top: 15px; padding: 15px; border-radius: 8px; font-weight: 600; text-align: center; font-size: 16px; background: #edf2f7; transition: all 0.3s ease; }
         .info-success { background: #c6f6d5 !important; color: #22543d !important; border: 1px solid #9ae6b4; }
         .info-error { background: #fed7d7 !important; color: #822727 !important; border: 1px solid #feb2b2; }
         .info-warning { background: #feebc8 !important; color: #9c4221 !important; border: 1px solid #fbd38d; }
 
         /* Tabla de Historial */
-        .table-container { overflow-x: auto; }
+        .table-container { overflow-x: auto; text-align: left; }
         table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 10px; }
         th, td { border-bottom: 1px solid #edf2f7; padding: 12px 8px; text-align: center; }
         th { background: #f7fafc; color: var(--text-light); font-size: 11px; text-transform: uppercase; }
@@ -92,10 +107,13 @@
             </div>
             
             <div id="reader"></div>
+            
+            <button id="btnCambiarLente" class="btn-lente">🔄 Cambiar Lente (1.0x)</button>
+            
             <div id="scannedInfo">📷 Iniciando cámara...</div>
         </div>
 
-        <div class="card">
+        <div class="card" style="text-align: left;">
             <h3>Historial Local</h3>
             <div class="table-container">
                 <table id="logTable">
@@ -113,7 +131,11 @@
     let totalPaquetesUnicos = 0;
     let scanPausado = false; 
     
-    // ⚠️ RECUERDA PONER TU URL DEL APPS SCRIPT AQUÍ
+    // VARIABLES PARA CONTROL DE CÁMARA
+    let html5QrCode = null;
+    let camarasTraseras = [];
+    let indiceLenteActual = 0;
+    
     const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbw8drrVJiEM5PyMQ7_Ok3F2o1i1DjT44WgpP5yKvPQddkQRVI7yx3o2WAxX5AM3TWul/exec";
 
     const AudioContext = window.AudioContext || window.webkitAudioContext;
@@ -212,7 +234,9 @@
             document.getElementById('loader').style.display = 'none';
             document.getElementById('main-content').style.display = 'block';
             
-            iniciarCamaraTrasera(); 
+            // Iniciar búsqueda de hardware
+            html5QrCode = new Html5Qrcode("reader");
+            prepararCamaras();
 
             setInterval(sincronizarConSheets, 30000);
 
@@ -222,38 +246,86 @@
         }
     }
 
-    function iniciarCamaraTrasera() {
-        const html5QrCode = new Html5Qrcode("reader");
-        
-        // AQUÍ ESTÁ LA MAGIA PARA LA CÁMARA
+    // --- LÓGICA DE CONTROL DE LENTES ---
+    async function prepararCamaras() {
+        try {
+            const devices = await Html5Qrcode.getCameras();
+            if (devices && devices.length > 0) {
+                // Buscamos todas las cámaras que digan "back", "trasera" o "0" (Android suele usar 0 para la principal)
+                camarasTraseras = devices.filter(c => c.label.toLowerCase().includes('back') || c.label.toLowerCase().includes('trasera') || c.label.toLowerCase().includes('0'));
+                
+                if (camarasTraseras.length === 0) camarasTraseras = devices; // Fallback si no identifica los nombres
+
+                // Si hay más de un lente, mostramos el botón
+                if (camarasTraseras.length > 1) {
+                    document.getElementById('btnCambiarLente').style.display = 'inline-block';
+                    // Vamos a intentar arrancar con la segunda cámara si existe, ya que la primera suele ser la 0.6x
+                    indiceLenteActual = 1; 
+                } else {
+                    indiceLenteActual = 0;
+                }
+
+                arrancarLente(camarasTraseras[indiceLenteActual].id);
+            } else {
+                arrancarFallback();
+            }
+        } catch (err) {
+            arrancarFallback();
+        }
+    }
+
+    function arrancarLente(deviceId) {
+        if (html5QrCode.isScanning) {
+            html5QrCode.stop().then(() => iniciarConConfig({ deviceId: { exact: deviceId } })).catch(console.error);
+        } else {
+            iniciarConConfig({ deviceId: { exact: deviceId } });
+        }
+    }
+
+    function arrancarFallback() {
+        // Si no pudo listar cámaras, usamos el comando genérico
+        iniciarConConfig({ facingMode: "environment" });
+    }
+
+    // Evento del botón para saltar al siguiente lente
+    document.getElementById('btnCambiarLente').addEventListener('click', () => {
+        if (camarasTraseras.length > 1) {
+            document.getElementById('scannedInfo').innerHTML = "🔄 Cambiando lente...";
+            document.getElementById('scannedInfo').className = "";
+            indiceLenteActual = (indiceLenteActual + 1) % camarasTraseras.length;
+            arrancarLente(camarasTraseras[indiceLenteActual].id);
+        }
+    });
+
+    function iniciarConConfig(configCamara) {
         html5QrCode.start(
-            { facingMode: "environment" }, 
+            configCamara, 
             { 
                 fps: 15, 
-                // 1. Convertimos el cuadro en un RECTÁNGULO delgado (Mira Láser)
-                qrbox: { width: 300, height: 80 }, 
-                
-                // 2. Prohibimos estrictamente leer códigos QR, solo códigos de barras lineales
+                qrbox: { width: 300, height: 80 }, // El rectángulo de la Mira Láser
                 formatsToSupport: [ 
                     Html5QrcodeSupportedFormats.CODE_128,
                     Html5QrcodeSupportedFormats.CODE_39,
                     Html5QrcodeSupportedFormats.EAN_13,
-                    Html5QrcodeSupportedFormats.EAN_8,
                     Html5QrcodeSupportedFormats.UPC_A,
-                    Html5QrcodeSupportedFormats.UPC_E,
                     Html5QrcodeSupportedFormats.ITF
                 ]
             },
             onScanSuccess
         ).then(() => {
-            document.getElementById('scannedInfo').innerHTML = "📷 Cámara lista. Centra el código de barras en la línea.";
+            document.getElementById('scannedInfo').innerHTML = "📷 Cámara lista. Centra el código en la franja.";
         }).catch((err) => {
-            console.log(err);
-            document.getElementById('scannedInfo').innerHTML = "❌ Error de cámara. Revisa los permisos del navegador.";
-            document.getElementById('scannedInfo').className = "info-error";
+            console.log("Error al iniciar cámara:", err);
+            // Si falla el lente específico, intenta abrir cualquier cámara trasera
+            if(configCamara.deviceId) { arrancarFallback(); } 
+            else {
+                document.getElementById('scannedInfo').innerHTML = "❌ Error de cámara. Revisa permisos.";
+                document.getElementById('scannedInfo').className = "info-error";
+            }
         });
     }
 
+    // --- LÓGICA DE ESCANEO ---
     function onScanSuccess(decodedText) {
         if (scanPausado) return; 
         
@@ -263,7 +335,7 @@
 
         if (ESCANEADOS.has(guiaEscaneada)) {
             sonidoError();
-            infoDiv.innerHTML = `⚠️ YA ESCANEADA<br><span style="font-size: 14px;">La guía ${guiaEscaneada} ya está registrada en la nube.</span>`;
+            infoDiv.innerHTML = `⚠️ YA ESCANEADA<br><span style="font-size: 14px;">La guía ${guiaEscaneada} ya está en la nube.</span>`;
             infoDiv.className = "info-warning";
             readerDiv.className = "reader-warning";
             pausarEscaneo(1500); 
@@ -301,7 +373,7 @@
             scanPausado = false;
             document.getElementById('reader').className = ""; 
             document.getElementById('scannedInfo').className = "";
-            document.getElementById('scannedInfo').innerHTML = "📷 Cámara lista. Centra el código en la línea.";
+            document.getElementById('scannedInfo').innerHTML = "📷 Cámara lista. Centra el código en la franja.";
         }, tiempoEspera);
     }
 
