@@ -44,9 +44,9 @@
         .reader-error { border-color: #e53e3e !important; box-shadow: 0 0 15px rgba(229, 62, 62, 0.5); }
         .reader-success { border-color: #38a169 !important; box-shadow: 0 0 15px rgba(56, 161, 105, 0.4); }
 
-        /* Botón de Cambio de Lente */
+        /* Botones y Entradas Manuales */
         .btn-lente {
-            display: none; /* Se oculta por defecto hasta detectar varias cámaras */
+            display: none;
             margin: 15px auto 5px auto;
             background: var(--secondary);
             color: white;
@@ -58,18 +58,45 @@
             cursor: pointer;
             box-shadow: 0 2px 4px rgba(0,0,0,0.15);
         }
+        
+        .manual-input-container {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+            align-items: center;
+        }
+        .manual-input {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid #cbd5e0;
+            border-radius: 8px;
+            font-size: 16px;
+            outline: none;
+        }
+        .manual-input:focus { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(49, 130, 206, 0.2); }
+        .btn-manual {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 14px;
+        }
 
-        #scannedInfo { margin-top: 15px; padding: 15px; border-radius: 8px; font-weight: 600; text-align: center; font-size: 16px; background: #edf2f7; transition: all 0.3s ease; }
+        #scannedInfo { margin-top: 15px; padding: 15px; border-radius: 8px; font-weight: 600; text-align: center; font-size: 14px; background: #edf2f7; transition: all 0.3s ease; word-wrap: break-word; }
         .info-success { background: #c6f6d5 !important; color: #22543d !important; border: 1px solid #9ae6b4; }
         .info-error { background: #fed7d7 !important; color: #822727 !important; border: 1px solid #feb2b2; }
         .info-warning { background: #feebc8 !important; color: #9c4221 !important; border: 1px solid #fbd38d; }
+        .estado-texto { font-size: 18px; margin-top: 5px; display: block; color: #2b6cb0; }
 
         /* Tabla de Historial */
         .table-container { overflow-x: auto; text-align: left; }
-        table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 10px; }
-        th, td { border-bottom: 1px solid #edf2f7; padding: 12px 8px; text-align: center; }
-        th { background: #f7fafc; color: var(--text-light); font-size: 11px; text-transform: uppercase; }
-        .badge { padding: 4px 8px; border-radius: 12px; font-size: 11px; font-weight: bold; }
+        table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 10px; }
+        th, td { border-bottom: 1px solid #edf2f7; padding: 10px 6px; text-align: center; }
+        th { background: #f7fafc; color: var(--text-light); font-size: 10px; text-transform: uppercase; }
+        .badge { padding: 4px 8px; border-radius: 12px; font-size: 10px; font-weight: bold; }
         .badge-sync { background: #feebc8; color: #c05621; }
         .badge-ok { background: #c6f6d5; color: #22543d; }
         .badge-fail { background: #fed7d7; color: #822727; }
@@ -107,17 +134,21 @@
             </div>
             
             <div id="reader"></div>
-            
             <button id="btnCambiarLente" class="btn-lente">🔄 Cambiar Lente (1.0x)</button>
             
-            <div id="scannedInfo">📷 Iniciando cámara...</div>
+            <div class="manual-input-container">
+                <input type="text" id="inputManual" class="manual-input" placeholder="Ingresa la guía manualmente..." autocomplete="off">
+                <button id="btnManual" class="btn-manual">Buscar</button>
+            </div>
+
+            <div id="scannedInfo">📷 Preparando cámara...</div>
         </div>
 
         <div class="card" style="text-align: left;">
             <h3>Historial Local</h3>
             <div class="table-container">
                 <table id="logTable">
-                    <thead><tr><th>Guía</th><th>Muelle</th><th>Ruta</th><th>Status</th></tr></thead>
+                    <thead><tr><th>Guía</th><th>Estado</th><th>Muelle</th><th>Status</th></tr></thead>
                     <tbody></tbody>
                 </table>
             </div>
@@ -131,12 +162,12 @@
     let totalPaquetesUnicos = 0;
     let scanPausado = false; 
     
-    // VARIABLES PARA CONTROL DE CÁMARA
     let html5QrCode = null;
     let camarasTraseras = [];
     let indiceLenteActual = 0;
     
-    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwZQxHp64s0AqG280QhzVBvVYKm1d0oxZAGFao2FwVTxH4zSQfw52jkRyBWdZEFr6U/exec";
+    // ⚠️ RECUERDA PONER LA URL DE TU APPS SCRIPT AQUÍ
+    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwUH9XFUzmBdq3KnlQNeMXLSiwBFyhF7klV0egNQ-N2WwKOVTOt4r4IFs5Qee0fJISy/exec";
 
     const AudioContext = window.AudioContext || window.webkitAudioContext;
     const audioCtx = new AudioContext();
@@ -170,26 +201,25 @@
         try {
             const respuesta = await fetch(WEB_APP_URL);
             const guiasEnNube = await respuesta.json();
-            
             if(Array.isArray(guiasEnNube)) {
                 guiasEnNube.forEach(guia => ESCANEADOS.add(guia.toString().trim()));
             }
             actualizarContadores();
         } catch (error) {
-            console.error("Error al sincronizar con Sheets:", error);
+            console.error("Error sincronización:", error);
         }
     }
 
     async function iniciarApp() {
         try {
-            const posiblesNombresViajes = ['Viajes.xlsx', 'Viajes (1).xlsx', 'Viajes (2).xlsx', 'Viajes (3).xlsx', 'Viajes (4).xlsx', 'Viajes (5).xlsx'];
+            const posiblesNombresViajes = ['Viajes.xlsx', 'Viajes (1).xlsx', 'Viajes (2).xlsx', 'Viajes (3).xlsx'];
             let resViajes = null;
             for (let nombre of posiblesNombresViajes) {
                 let intento = await fetch(nombre);
                 if (intento.ok) { resViajes = intento; break; }
             }
             const resMuelle = await fetch('Muelle.xlsx');
-            if(!resViajes || !resMuelle.ok) throw new Error("Archivos Excel no encontrados en GitHub.");
+            if(!resViajes || !resMuelle.ok) throw new Error("Excels no encontrados.");
 
             const dataV = await resViajes.arrayBuffer();
             const dataM = await resMuelle.arrayBuffer();
@@ -208,6 +238,9 @@
                 const guiaBruta = filaLimpia["Pedido Referencia externa"];
                 const idViaje = filaLimpia["IdViaje"];
                 
+                // NUEVO: Extraemos el Estado de la columna "Estado"
+                const estadoPaquete = filaLimpia["Estado"] || "Desconocido";
+                
                 if (guiaBruta !== undefined && guiaBruta !== null && guiaBruta !== "") {
                     let guiaStr = guiaBruta.toString().trim();
                     guiasUnicasSet.add(guiaStr);
@@ -221,7 +254,14 @@
                                 const oleada = idCompleto.split("-")[1].trim();
                                 if(oleada !== "1") muelleFinal += oleada;
                             }
-                            CATALOGO[guiaStr] = { muelle: muelleFinal, ruta: idCompleto, orden: filaLimpia["Orden"] || 0 };
+                            
+                            // Guardamos el estado en el diccionario
+                            CATALOGO[guiaStr] = { 
+                                muelle: muelleFinal, 
+                                ruta: idCompleto, 
+                                orden: filaLimpia["Orden"] || 0,
+                                estado: estadoPaquete
+                            };
                         }
                     }
                 }
@@ -234,10 +274,7 @@
             document.getElementById('loader').style.display = 'none';
             document.getElementById('main-content').style.display = 'block';
             
-            // Iniciar búsqueda de hardware
-            html5QrCode = new Html5Qrcode("reader");
             prepararCamaras();
-
             setInterval(sincronizarConSheets, 30000);
 
         } catch (error) {
@@ -246,25 +283,27 @@
         }
     }
 
-    // --- LÓGICA DE CONTROL DE LENTES ---
+    // --- CÁMARA Y HARDWARE ---
     async function prepararCamaras() {
+        html5QrCode = new Html5Qrcode("reader", {
+            formatsToSupport: [ 
+                Html5QrcodeSupportedFormats.CODE_128, Html5QrcodeSupportedFormats.CODE_39,
+                Html5QrcodeSupportedFormats.EAN_13, Html5QrcodeSupportedFormats.UPC_A, Html5QrcodeSupportedFormats.ITF
+            ]
+        });
+
         try {
             const devices = await Html5Qrcode.getCameras();
             if (devices && devices.length > 0) {
-                // Buscamos todas las cámaras que digan "back", "trasera" o "0" (Android suele usar 0 para la principal)
                 camarasTraseras = devices.filter(c => c.label.toLowerCase().includes('back') || c.label.toLowerCase().includes('trasera') || c.label.toLowerCase().includes('0'));
-                
-                if (camarasTraseras.length === 0) camarasTraseras = devices; // Fallback si no identifica los nombres
+                if (camarasTraseras.length === 0) camarasTraseras = devices; 
 
-                // Si hay más de un lente, mostramos el botón
                 if (camarasTraseras.length > 1) {
                     document.getElementById('btnCambiarLente').style.display = 'inline-block';
-                    // Vamos a intentar arrancar con la segunda cámara si existe, ya que la primera suele ser la 0.6x
                     indiceLenteActual = 1; 
                 } else {
                     indiceLenteActual = 0;
                 }
-
                 arrancarLente(camarasTraseras[indiceLenteActual].id);
             } else {
                 arrancarFallback();
@@ -283,11 +322,9 @@
     }
 
     function arrancarFallback() {
-        // Si no pudo listar cámaras, usamos el comando genérico
         iniciarConConfig({ facingMode: "environment" });
     }
 
-    // Evento del botón para saltar al siguiente lente
     document.getElementById('btnCambiarLente').addEventListener('click', () => {
         if (camarasTraseras.length > 1) {
             document.getElementById('scannedInfo').innerHTML = "🔄 Cambiando lente...";
@@ -299,34 +336,35 @@
 
     function iniciarConConfig(configCamara) {
         html5QrCode.start(
-            configCamara, 
-            { 
-                fps: 15, 
-                qrbox: { width: 300, height: 80 }, // El rectángulo de la Mira Láser
-                formatsToSupport: [ 
-                    Html5QrcodeSupportedFormats.CODE_128,
-                    Html5QrcodeSupportedFormats.CODE_39,
-                    Html5QrcodeSupportedFormats.EAN_13,
-                    Html5QrcodeSupportedFormats.UPC_A,
-                    Html5QrcodeSupportedFormats.ITF
-                ]
-            },
-            onScanSuccess
+            configCamara, { fps: 10, qrbox: { width: 250, height: 100 } }, procesarGuia
         ).then(() => {
-            document.getElementById('scannedInfo').innerHTML = "📷 Cámara lista. Centra el código en la franja.";
+            document.getElementById('scannedInfo').innerHTML = "📷 Cámara lista. Centra el código de barras.";
+            document.getElementById('scannedInfo').className = "";
         }).catch((err) => {
-            console.log("Error al iniciar cámara:", err);
-            // Si falla el lente específico, intenta abrir cualquier cámara trasera
-            if(configCamara.deviceId) { arrancarFallback(); } 
-            else {
-                document.getElementById('scannedInfo').innerHTML = "❌ Error de cámara. Revisa permisos.";
-                document.getElementById('scannedInfo').className = "info-error";
-            }
+            document.getElementById('scannedInfo').innerHTML = "❌ Fallo al iniciar: " + err;
+            document.getElementById('scannedInfo').className = "info-error";
+            if(configCamara.deviceId) { setTimeout(arrancarFallback, 1000); }
         });
     }
 
-    // --- LÓGICA DE ESCANEO ---
-    function onScanSuccess(decodedText) {
+    // --- ENTRADA MANUAL DE GUÍA ---
+    document.getElementById('btnManual').addEventListener('click', procesarGuiaManual);
+    document.getElementById('inputManual').addEventListener('keypress', function (e) {
+        if (e.key === 'Enter') { procesarGuiaManual(); }
+    });
+
+    function procesarGuiaManual() {
+        const inputElement = document.getElementById('inputManual');
+        const valorManual = inputElement.value.trim();
+        if(valorManual !== "") {
+            procesarGuia(valorManual);
+            inputElement.value = ""; // Limpia la barra después de buscar
+            inputElement.focus();
+        }
+    }
+
+    // --- PROCESAMIENTO CENTRAL (Cámara y Manual) ---
+    function procesarGuia(decodedText) {
         if (scanPausado) return; 
         
         const guiaEscaneada = decodedText.trim();
@@ -335,7 +373,7 @@
 
         if (ESCANEADOS.has(guiaEscaneada)) {
             sonidoError();
-            infoDiv.innerHTML = `⚠️ YA ESCANEADA<br><span style="font-size: 14px;">La guía ${guiaEscaneada} ya está en la nube.</span>`;
+            infoDiv.innerHTML = `⚠️ YA REGISTRADA<br><span style="font-size: 14px;">La guía ${guiaEscaneada} ya está en la nube.</span>`;
             infoDiv.className = "info-warning";
             readerDiv.className = "reader-warning";
             pausarEscaneo(1500); 
@@ -349,17 +387,20 @@
             ESCANEADOS.add(guiaEscaneada); 
             actualizarContadores();
             
-            infoDiv.innerHTML = `✅ ÉXITO<br><span style="font-size: 22px; color: #1a365d;">Muelle: ${item.muelle}</span>`;
+            // NUEVO: Mostramos el Estado en el panel de éxito
+            infoDiv.innerHTML = `✅ ÉXITO<br>
+                <span style="font-size: 22px; color: #1a365d;">Muelle: ${item.muelle}</span><br>
+                <span class="estado-texto">Estado: <b>${item.estado}</b></span>`;
             infoDiv.className = "info-success";
             
             readerDiv.className = "reader-success";
             setTimeout(() => readerDiv.className = "", 500);
             
             enviarASheets(guiaEscaneada, item);
-            pausarEscaneo(800); 
+            pausarEscaneo(1200); // Un poco más de tiempo para que alcancen a leer el Estado
         } else {
             sonidoError();
-            infoDiv.innerHTML = `❌ NO AUTORIZADA<br><span style="font-size: 14px;">Guía ${guiaEscaneada} fuera del catálogo.</span>`;
+            infoDiv.innerHTML = `❌ NO ENCONTRADA<br><span style="font-size: 14px;">La guía ${guiaEscaneada} no existe en este catálogo.</span>`;
             infoDiv.className = "info-error";
             
             readerDiv.className = "reader-error";
@@ -373,21 +414,32 @@
             scanPausado = false;
             document.getElementById('reader').className = ""; 
             document.getElementById('scannedInfo').className = "";
-            document.getElementById('scannedInfo').innerHTML = "📷 Cámara lista. Centra el código en la franja.";
+            document.getElementById('scannedInfo').innerHTML = "📷 Cámara lista. Centra el código de barras.";
         }, tiempoEspera);
     }
 
     async function enviarASheets(guia, item) {
         const table = document.getElementById('logTable').querySelector('tbody');
         const row = table.insertRow(0);
-        let rutaCorta = item.ruta.split(" - ")[0]; 
         
-        row.innerHTML = `<td><strong>${guia}</strong></td><td><span style="font-weight: bold; color: var(--primary);">${item.muelle}</span></td><td>${rutaCorta}</td><td><span class="badge badge-sync">...</span></td>`;
+        // NUEVO: Agregamos la celda del estado a la tabla
+        row.innerHTML = `
+            <td><strong>${guia}</strong></td>
+            <td style="font-size: 10px;">${item.estado}</td>
+            <td><span style="font-weight: bold; color: var(--primary);">${item.muelle}</span></td>
+            <td><span class="badge badge-sync">...</span></td>`;
 
         try {
+            // El backend sigue recibiendo la información (Nota: si deseas guardar el estado en Google Sheets, deberás añadir 'data.estado' en tu Apps Script)
             await fetch(WEB_APP_URL, {
                 method: "POST", mode: "no-cors",
-                body: JSON.stringify({guia: guia, muelle: item.muelle, ruta: item.ruta, orden: item.orden})
+                body: JSON.stringify({
+                    guia: guia, 
+                    muelle: item.muelle, 
+                    ruta: item.ruta, 
+                    orden: item.orden,
+                    estado: item.estado // Se envía el estado por si actualizas el script
+                })
             });
             row.cells[3].innerHTML = '<span class="badge badge-ok">OK</span>';
         } catch(e) {
